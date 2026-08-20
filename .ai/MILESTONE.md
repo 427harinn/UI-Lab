@@ -47,7 +47,18 @@ Create a stable application/editor foundation without implementing mockup import
 
 All requirements in `UI_LAB_REQUIREMENTS_v1.md` section "Completion definition" pass.
 
-Status: TODO
+Status: COMPLETE
+
+### Validation record
+
+- `npm run lint` — passed.
+- `npm run typecheck` — passed with strict TypeScript enabled.
+- `npm test` — passed: 4 test files, 12 tests.
+- `npm run build` — passed: Vite production build completed.
+
+Implemented the editor shell, viewport presets, Zod project schemas, blank project factory, typed Zustand project/editor/history state, safe localStorage persistence, and undo/redo foundation. The adapter contract remains external and was not loaded or implemented here; `UI_LAB_ADAPTER_SPEC_v1.md` was not present in the repository during implementation.
+
+Confirmed non-goals: no HouseToDo mockup screens, Mockup Import, JSZip, iframe mockup execution, react-moveable, drag/resize, Inspector editing, project ZIP import/export, screenshot export, or Codex Export were implemented.
 
 ---
 

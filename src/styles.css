@@ -1,0 +1,50 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #e6e9ef;
+  background: #101216;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 960px; min-height: 100vh; background: #101216; }
+button, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+.editor-shell { min-height: 100vh; display: flex; flex-direction: column; background: #15181e; }
+.toolbar { min-height: 64px; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid #2a2e37; background: #191c22; }
+.toolbar__identity, .toolbar__controls, .toolbar__history, .toolbar__future-actions { display: flex; align-items: center; gap: 10px; }
+.toolbar__identity { min-width: 250px; }
+.toolbar__product { font-size: 15px; font-weight: 750; letter-spacing: .02em; color: #f3f5f9; }
+.toolbar__divider { width: 1px; height: 18px; background: #3a3f4b; }
+.toolbar__project-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aeb5c1; font-size: 13px; }
+.toolbar__controls { justify-content: flex-end; flex: 1; }
+.toolbar__field { display: flex; align-items: center; gap: 8px; color: #8d96a5; font-size: 12px; }
+select, button { border: 1px solid #353b48; border-radius: 6px; background: #22262f; color: #dfe3ea; padding: 7px 10px; font-size: 12px; }
+select:focus-visible, button:focus-visible { outline: 2px solid #7d9cff; outline-offset: 2px; }
+button:hover:not(:disabled) { border-color: #6c7890; background: #2a303b; }
+button:disabled { color: #636b78; border-color: #292e38; background: #1d2026; }
+.toolbar__future-actions { padding-left: 10px; border-left: 1px solid #303540; }
+
+.editor-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 244px minmax(420px, 1fr) 270px; }
+.side-panel, .preview-panel { min-height: calc(100vh - 65px); }
+.side-panel { background: #191c22; }
+.left-panel { border-right: 1px solid #2a2e37; }
+.inspector-panel { border-left: 1px solid #2a2e37; }
+.panel-heading { padding: 22px 20px 18px; border-bottom: 1px solid #272c35; }
+.panel-heading h1, .panel-heading h2 { margin: 3px 0 0; color: #eef1f5; font-size: 15px; font-weight: 650; }
+.eyebrow { margin: 0; color: #7f8a9b; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+.panel-empty { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 100px 24px 24px; text-align: center; color: #737c8b; font-size: 12px; line-height: 1.45; }
+.panel-empty strong { color: #b9c0ca; font-size: 13px; font-weight: 600; }
+.panel-empty__icon { display: grid; width: 32px; height: 32px; place-items: center; margin-bottom: 5px; border: 1px solid #3b4350; border-radius: 8px; color: #758198; font-size: 18px; }
+
+.preview-panel { display: flex; min-width: 0; flex-direction: column; background: #111318; }
+.preview-panel__heading { display: flex; align-items: center; justify-content: space-between; }
+.status-chip { padding: 5px 8px; border: 1px solid #354052; border-radius: 999px; color: #91a1bd; font-size: 10px; }
+.preview-stage { display: flex; flex: 1; min-height: 0; align-items: center; justify-content: center; overflow: auto; padding: 34px; background-image: linear-gradient(#191d25 1px, transparent 1px), linear-gradient(90deg, #191d25 1px, transparent 1px); background-size: 24px 24px; }
+.viewport-frame { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 7px solid #2d333e; border-radius: 28px; background: #f7f8fa; box-shadow: 0 18px 50px rgba(0, 0, 0, .38); color: #4c5666; }
+.viewport-frame__empty { display: flex; max-width: 230px; flex-direction: column; align-items: center; gap: 8px; padding: 24px; text-align: center; font-size: 11px; line-height: 1.45; }
+.viewport-frame__empty strong { color: #283140; font-size: 13px; }
+.empty-glyph { display: grid; width: 38px; height: 38px; place-items: center; border: 1px dashed #aeb7c5; border-radius: 10px; color: #7d8ca3; font-size: 20px; }
+.preview-panel__footer { padding: 9px 20px; border-top: 1px solid #272c35; color: #798494; font-size: 11px; text-align: center; }

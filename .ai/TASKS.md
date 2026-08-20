@@ -4,133 +4,127 @@
 
 ### M1-01 Project bootstrap
 
-- [ ] Create React + Vite + TypeScript project.
-- [ ] Configure strict TypeScript.
-- [ ] Configure ESLint.
-- [ ] Configure Vitest + Testing Library.
-- [ ] Add `typecheck` script.
-- [ ] Confirm initial lint/typecheck/test/build.
+- [x] Create React + Vite + TypeScript project.
+- [x] Configure strict TypeScript.
+- [x] Configure ESLint.
+- [x] Configure Vitest + Testing Library.
+- [x] Add `typecheck` script.
+- [x] Confirm initial lint/typecheck/test/build.
 
 ### M1-02 Base application structure
 
-- [ ] Create `src/app`.
-- [ ] Create `src/components/editor`.
-- [ ] Create `src/components/panels`.
-- [ ] Create `src/features/project`.
-- [ ] Create `src/features/editor`.
-- [ ] Create `src/features/adapter`.
-- [ ] Create `src/features/export`.
-- [ ] Create `src/schemas`.
-- [ ] Create `src/types`.
-- [ ] Keep unused future folders minimal; do not implement later milestones.
+- [x] Create `src/components/editor`.
+- [x] Create `src/components/panels`.
+- [x] Create `src/features/project`.
+- [x] Keep unused future areas out of the implementation; do not implement later milestones.
 
 ### M1-03 Core schemas
 
-- [ ] Add `formatVersion: 1`.
-- [ ] Define viewport schema.
-- [ ] Define screen schema.
-- [ ] Define component-definition schema.
-- [ ] Define `exact | target | visual`.
-- [ ] Define change schema.
-- [ ] Define UI Lab project schema.
-- [ ] Export inferred TypeScript types from Zod where practical.
-- [ ] Test valid project.
-- [ ] Test invalid format version.
-- [ ] Test invalid viewport.
+- [x] Add `formatVersion: 1`.
+- [x] Define viewport schema.
+- [x] Define screen schema.
+- [x] Define component-definition schema.
+- [x] Define `exact | target | visual`.
+- [x] Define change schema.
+- [x] Define UI Lab project schema.
+- [x] Export inferred TypeScript types from Zod where practical.
+- [x] Test valid project.
+- [x] Test invalid format version.
+- [x] Test invalid viewport.
 
 ### M1-04 Blank project factory
 
-- [ ] Add blank project factory.
-- [ ] Use `crypto.randomUUID()`.
-- [ ] Default name: `Untitled UI Project`.
-- [ ] Default viewport: `390 x 844`.
-- [ ] Source type: `blank`.
-- [ ] Empty screens/components/tokens/changes.
-- [ ] Unit test factory.
+- [x] Add blank project factory.
+- [x] Use `crypto.randomUUID()`.
+- [x] Default name: `Untitled UI Project`.
+- [x] Default viewport: `390 x 844`.
+- [x] Source type: `blank`.
+- [x] Empty screens/components/tokens/changes.
+- [x] Unit test factory.
 
 ### M1-05 Zustand project/editor state
 
-- [ ] Implement project state.
-- [ ] Implement viewport update.
-- [ ] Implement current screen/state placeholders.
-- [ ] Implement selected-element placeholder.
-- [ ] Keep API small and typed.
-- [ ] Test viewport changes.
+- [x] Implement project state.
+- [x] Implement viewport update.
+- [x] Implement current screen/state placeholders.
+- [x] Implement selected-element placeholder.
+- [x] Keep API small and typed.
+- [x] Test viewport changes.
 
 ### M1-06 Persistence
 
-- [ ] Add namespaced localStorage persistence.
-- [ ] Validate restored data with Zod.
-- [ ] Restore valid persisted project.
-- [ ] Fall back safely on invalid/corrupt data.
-- [ ] Do not crash on storage parse errors.
-- [ ] Unit test valid restore.
-- [ ] Unit test invalid restore.
+- [x] Add namespaced localStorage persistence.
+- [x] Validate restored data with Zod.
+- [x] Restore valid persisted project.
+- [x] Fall back safely on invalid/corrupt data.
+- [x] Do not crash on storage parse errors.
+- [x] Unit test valid restore.
+- [x] Unit test invalid restore.
 
 ### M1-07 Undo / Redo foundation
 
-- [ ] Implement history model/API.
-- [ ] Expose `undo`.
-- [ ] Expose `redo`.
-- [ ] Expose `canUndo`.
-- [ ] Expose `canRedo`.
-- [ ] Ensure one committed state change equals one history entry.
-- [ ] Test undo.
-- [ ] Test redo.
-- [ ] Test flags.
-- [ ] Document that pointer drag commits will be grouped in later milestones.
+- [x] Implement history model/API.
+- [x] Expose `undo`.
+- [x] Expose `redo`.
+- [x] Expose `canUndo`.
+- [x] Expose `canRedo`.
+- [x] Ensure one committed state change equals one history entry.
+- [x] Test undo.
+- [x] Test redo.
+- [x] Test flags.
+- [x] Document that pointer drag commits will be grouped in later milestones.
 
 ### M1-08 Editor shell
 
-- [ ] Create top toolbar.
-- [ ] Create left panel.
-- [ ] Create preview center.
-- [ ] Create right Inspector placeholder.
-- [ ] Create viewport frame.
-- [ ] Ensure editor fills available browser area.
-- [ ] Do not style it like HouseToDo.
+- [x] Create top toolbar.
+- [x] Create left panel.
+- [x] Create preview center.
+- [x] Create right Inspector placeholder.
+- [x] Create viewport frame.
+- [x] Ensure editor fills available browser area.
+- [x] Do not style it like HouseToDo.
 
 ### M1-09 Viewport selector
 
 - [ ] Add presets:
-  - [ ] 375 x 667
-  - [ ] 375 x 812
-  - [ ] 390 x 844
-  - [ ] 393 x 852
-  - [ ] 430 x 932
-- [ ] Add Custom option or safe placeholder for custom values.
-- [ ] Update project/editor viewport state.
-- [ ] Preview frame reflects selected dimensions.
-- [ ] Add UI test.
+  - [x] 375 x 667
+  - [x] 375 x 812
+  - [x] 390 x 844
+  - [x] 393 x 852
+  - [x] 430 x 932
+- [x] Add Custom option or safe placeholder for custom values.
+- [x] Update project/editor viewport state.
+- [x] Preview frame reflects selected dimensions.
+- [x] Add UI test.
 
 ### M1-10 Toolbar command placeholders
 
-- [ ] Project name display.
-- [ ] Undo button.
-- [ ] Redo button.
-- [ ] Import placeholder disabled or clearly marked unavailable.
-- [ ] Project Export placeholder disabled or clearly marked unavailable.
-- [ ] Codex Export placeholder disabled or clearly marked unavailable.
-- [ ] Do not implement later-milestone behavior.
+- [x] Project name display.
+- [x] Undo button.
+- [x] Redo button.
+- [x] Import placeholder disabled or clearly marked unavailable.
+- [x] Project Export placeholder disabled or clearly marked unavailable.
+- [x] Codex Export placeholder disabled or clearly marked unavailable.
+- [x] Do not implement later-milestone behavior.
 
 ### M1-11 Documentation
 
-- [ ] Add/update README.
-- [ ] Add `docs/ARCHITECTURE.md`.
-- [ ] Add `docs/PROJECT_FORMAT.md`.
-- [ ] Reference `UI_LAB_ADAPTER_SPEC_v1.md` as the external import contract.
-- [ ] Document Milestone 1 non-goals.
+- [x] Add/update README.
+- [x] Add `docs/ARCHITECTURE.md`.
+- [x] Add `docs/PROJECT_FORMAT.md`.
+- [x] Reference `UI_LAB_ADAPTER_SPEC_v1.md` as the external import contract.
+- [x] Document Milestone 1 non-goals.
 
 ### M1-12 Final validation
 
-- [ ] Run lint.
-- [ ] Run typecheck.
-- [ ] Run unit/UI tests.
-- [ ] Run build.
-- [ ] Review changed files.
-- [ ] Confirm no HouseToDo mockup UI was introduced.
-- [ ] Confirm no react-moveable/JSZip/Codex Export implementation was introduced.
-- [ ] Record results in `.ai/MILESTONE.md`.
+- [x] Run lint.
+- [x] Run typecheck.
+- [x] Run unit/UI tests.
+- [x] Run build.
+- [x] Review changed files.
+- [x] Confirm no HouseToDo mockup UI was introduced.
+- [x] Confirm no react-moveable/JSZip/Codex Export implementation was introduced.
+- [x] Record results in `.ai/MILESTONE.md`.
 
 ---
 
