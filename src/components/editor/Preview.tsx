@@ -83,6 +83,7 @@ export function Preview() {
   const baseInlineStylesRef = useRef(new WeakMap<HTMLElement, ReturnType<typeof readInlineStyleSnapshot>>())
   const interactionRef = useRef<InteractionState | undefined>(undefined)
   const resizeListenersRef = useRef(new Map<HTMLElement, (event: PointerEvent) => void>())
+  const iframeClickCleanupRef = useRef<(() => void) | undefined>(undefined)
   const [iframeDocument, setIframeDocument] = useState<Document | null>(null)
   const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null)
   const [targets, setTargets] = useState<EditableElementTarget[]>([])
@@ -192,6 +193,8 @@ export function Preview() {
       return
     }
 
+    iframeClickCleanupRef.current?.()
+    iframeClickCleanupRef.current = undefined
     overlayRoot?.remove()
     const nextRoot = document.createElement('div')
     nextRoot.className = 'uilab-editor-overlay'
@@ -214,7 +217,10 @@ export function Preview() {
 
     const handleClick = (event: MouseEvent) => {
       const target = findEditableTargetAtNode(event.target, targetsRef.current)
-      if (!target) return
+      if (!target) {
+        setSelection(undefined)
+        return
+      }
       event.preventDefault()
       event.stopPropagation()
       const baseFrame = baseFramesRef.current.get(target.element) ?? getElementFrame(target.element)
@@ -229,6 +235,7 @@ export function Preview() {
       })
     }
     document.addEventListener('click', handleClick, true)
+    iframeClickCleanupRef.current = () => document.removeEventListener('click', handleClick, true)
     setImportError(undefined)
   }, [applyProjectChangesToTargets, currentScreenId, currentStateId, importedMockup, overlayRoot, project, setImportError, setSelection])
 
@@ -378,6 +385,7 @@ export function Preview() {
   }, [handleManualResizeStart])
 
   useEffect(() => () => {
+    iframeClickCleanupRef.current?.()
     resizeListenersRef.current.forEach((listener, handle) => handle.removeEventListener('pointerdown', listener, true))
     resizeListenersRef.current.clear()
   }, [])

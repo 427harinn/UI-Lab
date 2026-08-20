@@ -18,6 +18,7 @@ export interface EditorStore {
   importedMockup?: ImportedMockup
   isImporting: boolean
   importError?: string
+  status?: EditorStatus
   past: UiLabProject[]
   future: UiLabProject[]
   canUndo: boolean
@@ -32,11 +33,17 @@ export interface EditorStore {
   importMockupFile: (input: Blob | ArrayBuffer | Uint8Array) => Promise<boolean>
   importProjectFile: (input: Blob | ArrayBuffer | Uint8Array) => Promise<boolean>
   setImportError: (message?: string) => void
+  setStatus: (status?: EditorStatus) => void
   updateProjectName: (name: string) => void
   replaceProject: (project: UiLabProject) => void
   commitProject: (project: UiLabProject) => void
   undo: () => void
   redo: () => void
+}
+
+export interface EditorStatus {
+  kind: 'success' | 'error' | 'info'
+  message: string
 }
 
 function getBrowserStorage(): ProjectStorage | undefined {
@@ -114,6 +121,7 @@ function createStore(storage: ProjectStorage | undefined) {
       importedMockup: undefined,
       isImporting: false,
       importError: undefined,
+      status: undefined,
       past: [],
       future: [],
       canUndo: false,
@@ -163,7 +171,7 @@ function createStore(storage: ProjectStorage | undefined) {
         return unchanged ? state : { selectedElement: { ...state.selectedElement, styles } }
       }),
       importMockupFile: async (input) => {
-        set({ isImporting: true, importError: undefined })
+        set({ isImporting: true, importError: undefined, status: undefined })
         try {
           const importedMockup = await importMockupZip(input)
           const project = createImportedProject(importedMockup)
@@ -177,17 +185,18 @@ function createStore(storage: ProjectStorage | undefined) {
             importedMockup,
             isImporting: false,
             importError: undefined,
+            status: { kind: 'success', message: 'Mockup imported' },
             ...updateHistoryFlags([], []),
           })
           return true
         } catch (error) {
           const message = error instanceof Error ? error.message : 'The mockup could not be imported.'
-          set({ isImporting: false, importError: message })
+          set({ isImporting: false, importError: message, status: { kind: 'error', message: 'Mockup Import error. The selected mockup could not be imported.' } })
           return false
         }
       },
       importProjectFile: async (input) => {
-        set({ isImporting: true, importError: undefined })
+        set({ isImporting: true, importError: undefined, status: undefined })
         try {
           // loadProjectPackage validates the entire archive before this single state
           // transition, so a failed import cannot partially replace the open project.
@@ -203,16 +212,18 @@ function createStore(storage: ProjectStorage | undefined) {
             importedMockup: loaded.importedMockup,
             isImporting: false,
             importError: undefined,
+            status: { kind: 'success', message: 'Project imported' },
             ...updateHistoryFlags([], []),
           })
           return true
         } catch (error) {
           const message = error instanceof Error ? error.message : 'The project could not be imported.'
-          set({ isImporting: false, importError: message })
+          set({ isImporting: false, importError: message, status: { kind: 'error', message: 'Project Import error. The selected project could not be imported.' } })
           return false
         }
       },
-      setImportError: (importError) => set({ importError }),
+      setImportError: (importError) => set({ importError, status: importError ? { kind: 'error', message: importError } : undefined }),
+      setStatus: (status) => set({ status }),
       updateProjectName: (name) => {
         const current = get().currentProject
         commitProject({ ...current, name })
@@ -227,6 +238,7 @@ function createStore(storage: ProjectStorage | undefined) {
           ...clearSelection(),
           importedMockup: undefined,
           importError: undefined,
+          status: undefined,
           ...updateHistoryFlags([], []),
         })
       },

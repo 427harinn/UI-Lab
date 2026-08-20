@@ -200,8 +200,17 @@ Implemented:
 
 ## Milestone 7 — Quality / UX
 
-Status: TODO
+Status: COMPLETE
 
 Goal:
 
 Visual regression, Storybook, shortcuts, and editing UX hardening.
+
+Implemented:
+
+- Platform-safe Undo/Redo shortcuts, Escape selection clearing, and non-destructive Delete/Backspace behavior.
+- Inspector draft cancel/commit behavior, numeric steps, field-level invalid feedback, and no-op protection.
+- Dirty change count, replacement confirmation dialog, busy import/export controls, accessible live status feedback, and categorized error UX.
+- Iframe blank-area selection clearing and preview listener cleanup; Blob URLs are revoked for preview and downloads.
+- Reduced-motion CSS, visible focus styles, accessible labels/dialog semantics, Storybook editor-shell stories, and Playwright visual regression baselines.
+- Milestone 7 unit/integration and Playwright coverage plus PR evidence under `docs/screenshots/m7/`.

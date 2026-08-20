@@ -1,6 +1,6 @@
 # UI Lab
 
-UI Lab is a browser-based visual UI editor. Milestone 4 adds Adapter-gated Inspector property editing on top of the trusted iframe preview introduced in Milestone 2 and the visual editing foundation from Milestone 3.
+UI Lab is a browser-based visual UI editor. Milestone 7 hardens the editor shell with safe shortcuts, editing feedback, guarded imports, accessibility, Storybook, and visual regression coverage.
 
 ## Development
 
@@ -16,6 +16,14 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run build-storybook
+npm run test:e2e
+```
+
+Storybook:
+
+```bash
+npm run storybook
 ```
 
 ## Mockup import
@@ -59,5 +67,21 @@ design instructions, and current preview screenshots. It is separate from
 [docs/CODEX_EXPORT_FORMAT.md](docs/CODEX_EXPORT_FORMAT.md).
 
 Moveable controls render inside the imported iframe document so all measurements use the preview content area's `(0, 0)` origin. Selection is reset when screen/state/import/iframe lifecycle changes. Codex Export, source rewriting, and screenshot export remain future milestones. Inspector edits do not rewrite source CSS or React files.
+
+## Editing workflow and keyboard shortcuts
+
+The primary workflow is `Import Mockup → Select → edit in Inspector or drag/resize → Export Project or Export for Codex`. UI changes are shown in the toolbar as a change count. Importing another mockup/project while changes exist opens a replacement confirmation dialog; Cancel leaves the current project untouched.
+
+| Action | Windows/Linux | macOS |
+| --- | --- | --- |
+| Undo | Ctrl+Z | Cmd+Z |
+| Redo | Ctrl+Shift+Z (Ctrl+Y also works) | Cmd+Shift+Z |
+| Clear selection | Escape | Escape |
+| Commit Inspector draft | Enter or blur | Enter or blur |
+| Cancel Inspector draft | Escape | Escape |
+
+Undo/redo shortcuts are ignored in input, textarea, select, and contenteditable controls so native text editing is preserved. Delete and Backspace never delete preview elements. Import/export controls show busy state, prevent repeated clicks, and announce success or user-readable errors through the status area.
+
+Visual regression snapshots live under `e2e/m7.quality.pw.ts-snapshots/`; `docs/screenshots/m7/` contains PR evidence screenshots and is intentionally separate.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md), and [.ai/MILESTONE.md](.ai/MILESTONE.md) for implementation details and status.

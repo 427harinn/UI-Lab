@@ -367,3 +367,35 @@ After each small task:
 3. fix discovered issues before continuing
 
 Do not stop for approval after every small task unless a material architectural or safety issue appears.
+
+---
+
+## Milestone 7 — Quality / Editing UX
+
+Status: COMPLETE
+
+Branch:
+
+```text
+feat/m7-quality-editing-ux
+```
+
+- [x] Add platform-safe keyboard shortcut utility and boundary tests.
+- [x] Preserve native input undo; keep Delete/Backspace non-destructive.
+- [x] Clear selection on Escape, blank preview click, screen/state changes, import, and iframe reload.
+- [x] Add Inspector draft cancel, Enter/blur commit, numeric steps, fractional geometry support, and invalid field feedback.
+- [x] Add dirty change count and guarded Mockup/Project replacement dialog with focus/Escape handling.
+- [x] Add import/export/screenshot busy state, repeated-click protection, categorized errors, and aria-live success feedback.
+- [x] Revoke preview/download Blob URLs and clean up iframe click listeners.
+- [x] Add reduced-motion CSS and shell accessibility/focus polish.
+- [x] Add Storybook commands and stories for editor shell, empty/selected Inspector, status, and confirmation dialog.
+- [x] Add Playwright visual regression baselines for blank, selected, and edited states.
+- [x] Add Milestone 7 E2E flows for guard, shortcuts, Inspector editing, busy export, and status feedback.
+- [x] Update README and architecture documentation.
+- [x] Run lint, typecheck, unit/integration, build, E2E, and Storybook build.
+
+Known limitations:
+
+- Native browser download APIs remain the local delivery boundary.
+- Moveable interaction itself is not altered for reduced motion.
+- Multi-selection, source rewriting, cloud storage, collaboration, and production HouseToDo integration remain excluded.
