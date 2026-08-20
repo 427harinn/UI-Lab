@@ -1,7 +1,9 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { VIEWPORT_PRESETS } from './viewportPresets'
 import { useEditorStore } from '../../features/project/store'
 import { projectFilename, serializeProjectPackage } from '../../features/project/package'
+import { codexExportFilename, serializeCodexExport } from '../../features/codex-export/export'
+import { capturePreviewScreenshots } from '../../features/codex-export/previewCapture'
 
 export function Toolbar() {
   const projectName = useEditorStore((state) => state.currentProject.name)
@@ -20,6 +22,7 @@ export function Toolbar() {
   const importError = useEditorStore((state) => state.importError)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const projectFileInputRef = useRef<HTMLInputElement>(null)
+  const [isExportingCodex, setIsExportingCodex] = useState(false)
 
   const selectedPreset = VIEWPORT_PRESETS.find(
     (preset) => preset.width === viewport.width && preset.height === viewport.height,
@@ -105,7 +108,33 @@ export function Toolbar() {
           >
             Export Project
           </button>
-          <button type="button" disabled title="Available in a later milestone">Codex Export</button>
+          <button
+            type="button"
+            disabled={isImporting || isExportingCodex}
+            onClick={async () => {
+              setIsExportingCodex(true)
+              try {
+                const bytes = await serializeCodexExport(currentProject, importedMockup, capturePreviewScreenshots)
+                const blobBytes = new Uint8Array(bytes.byteLength)
+                blobBytes.set(bytes)
+                const url = URL.createObjectURL(new Blob([blobBytes.buffer], { type: 'application/zip' }))
+                const anchor = document.createElement('a')
+                anchor.href = url
+                anchor.download = codexExportFilename(currentProject.name)
+                document.body.appendChild(anchor)
+                anchor.click()
+                anchor.remove()
+                URL.revokeObjectURL(url)
+                setImportError(undefined)
+              } catch (error) {
+                setImportError(error instanceof Error ? error.message : 'The Codex Export could not be created.')
+              } finally {
+                setIsExportingCodex(false)
+              }
+            }}
+          >
+            {isExportingCodex ? 'Exporting…' : 'Export for Codex'}
+          </button>
         </div>
       </div>
       {importError && <div className="toolbar__import-error" role="alert">{importError}</div>}

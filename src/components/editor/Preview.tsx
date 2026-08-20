@@ -26,6 +26,8 @@ import {
   upsertChange,
 } from '../../features/visual-editing/changes'
 import { readComputedStyleSnapshot, readInlineStyleSnapshot } from '../../features/visual-editing/inspector'
+import { captureIframeScreenshot } from '../../features/codex-export/screenshot'
+import { registerPreviewCapture, previewScopeKey, type PreviewCaptureScope } from '../../features/codex-export/previewCapture'
 
 interface InteractionState {
   type: 'drag' | 'resize'
@@ -47,6 +49,10 @@ function frameFromDrag(start: VisualFrame, translate: number[]): VisualFrame {
     x: start.x + (translate[0] ?? 0),
     y: start.y + (translate[1] ?? 0),
   }
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 }
 
 export function Preview() {
@@ -73,6 +79,49 @@ export function Preview() {
   const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null)
   const [targets, setTargets] = useState<EditableElementTarget[]>([])
   const [snapActive, setSnapActive] = useState(false)
+
+  useEffect(() => {
+    const unregister = registerPreviewCapture(async (scopes: PreviewCaptureScope[]) => {
+      if (!iframeRef.current?.contentDocument || !importedMockup) throw new Error('The preview is not available for screenshot capture.')
+      const store = useEditorStore.getState()
+      const originalScreenId = store.currentScreenId
+      const originalStateId = store.currentStateId
+      const screenshots: Record<string, Uint8Array> = {}
+
+      const waitForScope = async (scope: PreviewCaptureScope) => {
+        for (let attempt = 0; attempt < 80; attempt += 1) {
+          const frame = iframeRef.current
+          const hash = frame?.contentWindow?.location.hash ?? ''
+          if (frame?.contentDocument?.readyState === 'complete' && hash.includes(`uilabState=${encodeURIComponent(scope.stateId)}`)) {
+            await wait(40)
+            for (const expected of scope.targets ?? []) {
+              const found = targetsRef.current.some((target) => target.componentId === expected.componentId && target.instanceId === expected.instanceId)
+              if (!found) throw new Error(`The preview does not contain instance “${expected.instanceId}” for component “${expected.componentId}”.`)
+            }
+            return
+          }
+          await wait(25)
+        }
+        throw new Error(`The preview did not become ready for ${scope.screenId}/${scope.stateId}.`)
+      }
+
+      try {
+        for (const scope of scopes) {
+          if (useEditorStore.getState().currentScreenId !== scope.screenId) useEditorStore.getState().setCurrentScreenId(scope.screenId)
+          if (useEditorStore.getState().currentStateId !== scope.stateId) useEditorStore.getState().setCurrentStateId(scope.stateId)
+          await waitForScope(scope)
+          const frame = iframeRef.current
+          if (!frame) throw new Error('The preview iframe disappeared during screenshot capture.')
+          screenshots[previewScopeKey(scope)] = await captureIframeScreenshot(frame, viewport.width, viewport.height)
+        }
+      } finally {
+        if (originalScreenId && useEditorStore.getState().currentScreenId !== originalScreenId) useEditorStore.getState().setCurrentScreenId(originalScreenId)
+        if (originalStateId && useEditorStore.getState().currentStateId !== originalStateId) useEditorStore.getState().setCurrentStateId(originalStateId)
+      }
+      return screenshots
+    })
+    return unregister
+  }, [importedMockup, viewport.height, viewport.width])
 
   const previewSource = useMemo(() => {
     if (!importedMockup || typeof URL.createObjectURL !== 'function') return undefined

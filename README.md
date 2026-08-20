@@ -40,6 +40,24 @@ Milestone 3 supports selecting Adapter-exposed instances, dragging elements whos
 
 Milestone 5 adds local project sessions. Use `Import Mockup` for an Adapter v1 `.zip`, `Export Project` to save the current editing state as a `.ui-project`, and `Import Project` to restore it later without the original mockup ZIP. The archive includes the current project JSON, Adapter metadata, preview HTML, viewport, and changes. Project import validates the complete ZIP before atomically replacing the open project; a failed import leaves the existing preview unchanged. Project archives intentionally do not include undo/redo stacks, DOM nodes, Blob URLs, or Moveable state, and browser reload may still require selecting the archive again.
 
+The Milestone 6 workflow is:
+
+```text
+Import Mockup
+  ↓
+Visual Editing
+  ↓
+Export Project (.ui-project)
+  ↓
+Export for Codex (implementation ZIP)
+```
+
+`Export for Codex` generates `HouseToDo-ui-changes.zip` with normalized final
+changes, semantic design tokens, Adapter screen metadata, implementation and
+design instructions, and current preview screenshots. It is separate from
+`.ui-project` and is not imported back into UI Lab. See
+[docs/CODEX_EXPORT_FORMAT.md](docs/CODEX_EXPORT_FORMAT.md).
+
 Moveable controls render inside the imported iframe document so all measurements use the preview content area's `(0, 0)` origin. Selection is reset when screen/state/import/iframe lifecycle changes. Codex Export, source rewriting, and screenshot export remain future milestones. Inspector edits do not rewrite source CSS or React files.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md), and [.ai/MILESTONE.md](.ai/MILESTONE.md) for implementation details and status.

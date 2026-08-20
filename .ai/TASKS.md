@@ -187,6 +187,48 @@ PR creation remains manual because the local GitHub CLI token is invalid. Use th
 
 ---
 
+## Milestone 6 — Codex Export
+
+Branch:
+
+```text
+feat/m6-codex-export
+```
+
+### M6-01 Export contract
+
+- [x] Add independent Codex Export v1 schema and ZIP format.
+- [x] Preserve semantic Adapter tokens and cross-validated screens/states.
+- [x] Generate implementation and design Markdown documents.
+
+### M6-02 Change resolution and validation
+
+- [x] Resolve same screen/state/instance/property to one final state.
+- [x] Stable-sort screen, state, component, instance, and property records.
+- [x] Reject zero changes and stale screen/state/component/property targets.
+- [x] Preserve exact, visual, and target value types.
+
+### M6-03 Screenshots and UI
+
+- [x] Add `Export for Codex` toolbar action distinct from Project Export.
+- [x] Capture changed screen/state preview references locally as PNG.
+- [x] Reject the complete export when screenshot generation fails.
+
+### M6-04 Tests and evidence
+
+- [x] Add schema, resolution, stale-target, token, Markdown, filename, ZIP, and screenshot-failure tests.
+- [x] Add Mockup → edit → Export for Codex → ZIP inspection integration coverage.
+- [x] Add Playwright E2E and `docs/screenshots/m6/` evidence.
+- [x] Run lint, typecheck, unit/integration tests, build, and E2E.
+
+### M6-05 Delivery
+
+- [ ] Commit changes.
+- [ ] Push `feat/m6-codex-export`.
+- [ ] Create one non-draft PR targeting `main` without auto-merge.
+
+---
+
 ## Milestone 3 — Visual Editing
 
 Branch:

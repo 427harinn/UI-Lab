@@ -79,6 +79,35 @@ For mockup projects, Import also cross-validates the normalized project against 
 
 localStorage remains a lightweight metadata convenience, not a binary project store. A reload may require selecting the `.ui-project` again, which is surfaced by the existing “Re-import required” state for mockup metadata without attempting to serialize preview HTML.
 
+## Milestone 6 Codex Export boundary
+
+`src/features/codex-export/export.ts` is a separate serialization boundary from
+the `.ui-project` package. It consumes validated project changes and validated
+Adapter metadata, resolves the final value for each screen/state/instance/
+property scope, and emits only Codex-facing records. It never rewrites source,
+calls a remote service, installs packages, or uploads local content.
+
+`exact` values are normally implemented directly. `visual` values are
+editor-space visual targets that must be reinterpreted within the existing
+Flex/Grid/responsive layout. `target` values are approximate future-compatible
+goals. `componentId` is the semantic implementation target and `instanceId` is
+visual reference context; instance-specific code requires an explicit reason.
+
+Before ZIP creation, stale screen/state/component/property targets are rejected,
+zero-change projects are rejected, and all requested reference screenshots must
+be valid PNGs. Screenshot generation is a browser-local boundary in
+`src/features/codex-export/screenshot.ts`, registered by the iframe Preview.
+The ZIP is created only after every screenshot succeeds.
+
+JSON documents, screens, changes, components, and screenshot scope requests are
+sorted deterministically. JSON uses stable object key ordering and ZIP entries
+use fixed timestamps where JSZip permits it. `screens.json` is sourced from the
+cross-validated Adapter metadata so Codex sees the screen route, states, and
+default state that the preview actually supports.
+
 ## Deliberate boundaries
 
-Adapter project files and iframe preview execution are implemented for Milestone 2. Milestone 3 adds element discovery, selection, visual manipulation, snapping, guides, measurements, and screenshot evidence. Codex Export, source parsing/rewriting, screenshot export packaging, and backend services remain out of scope. Inspector changes are preview-only and never rewrite imported source files.
+Adapter project files, iframe preview execution, visual editing, Inspector
+changes, and Codex Export are local-only features. Source parsing/rewriting,
+production application changes, package installation, remote upload, backend
+services, and automatic PR work remain out of scope.
