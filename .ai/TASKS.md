@@ -27,161 +27,163 @@ feat/m2-mockup-import
 
 ### M2-01 Git workflow
 
-- [ ] Update local `main`.
-- [ ] Create `feat/m2-mockup-import`.
-- [ ] Confirm implementation is not being performed directly on `main`.
+- [x] Update local `main`.
+- [x] Create `feat/m2-mockup-import`.
+- [x] Confirm implementation is not being performed directly on `main`.
 
 ### M2-02 Add dependency
 
-- [ ] Add JSZip.
-- [ ] Do not add react-moveable.
-- [ ] Run install/typecheck.
+- [x] Add JSZip.
+- [x] Do not add react-moveable.
+- [x] Run install/typecheck.
 
 ### M2-03 Adapter schemas
 
-- [ ] Add adapter project schema.
-- [ ] Add screens schema.
-- [ ] Add components schema.
-- [ ] Add editable-property enum.
-- [ ] Add `instances` enum.
-- [ ] Add states schema.
-- [ ] Add tokens schema.
-- [ ] Add schema tests.
+- [x] Add adapter project schema.
+- [x] Add screens schema.
+- [x] Add components schema.
+- [x] Add editable-property enum.
+- [x] Add `instances` enum.
+- [x] Add states schema.
+- [x] Add tokens schema.
+- [x] Add schema tests.
 
 ### M2-04 ZIP reader
 
-- [ ] Accept a user-selected ZIP.
-- [ ] Read ZIP using JSZip.
-- [ ] Check required adapter files.
-- [ ] Parse JSON safely.
-- [ ] Validate parsed values.
-- [ ] Validate `project.entry`.
-- [ ] Confirm entry exists in ZIP.
-- [ ] Return typed import result.
-- [ ] Add invalid ZIP tests.
-- [ ] Add missing-file tests.
+- [x] Accept a user-selected ZIP.
+- [x] Read ZIP using JSZip.
+- [x] Check required adapter files.
+- [x] Parse JSON safely.
+- [x] Validate parsed values.
+- [x] Validate `project.entry`.
+- [x] Confirm entry exists in ZIP.
+- [x] Return typed import result.
+- [x] Add invalid ZIP tests.
+- [x] Add missing-file tests.
 
 ### M2-05 Import UI
 
-- [ ] Enable Import toolbar command.
-- [ ] Add file input / picker flow.
-- [ ] Restrict intent to ZIP.
-- [ ] Add loading state.
-- [ ] Prevent concurrent import.
-- [ ] Add readable error presentation.
-- [ ] Add trusted local import note.
+- [x] Enable Import toolbar command.
+- [x] Add file input / picker flow.
+- [x] Restrict intent to ZIP.
+- [x] Add loading state.
+- [x] Prevent concurrent import.
+- [x] Add readable error presentation.
+- [x] Add trusted local import note.
 
 ### M2-06 Preview URL/document
 
-- [ ] Read entry HTML as text.
-- [ ] Create isolated iframe preview document URL.
-- [ ] Clean up/revoke old URLs.
-- [ ] Avoid running mockup code in parent context.
-- [ ] Add documentation for preferred single-file import build.
+- [x] Read entry HTML as text.
+- [x] Create isolated iframe preview document URL.
+- [x] Clean up/revoke old URLs.
+- [x] Avoid running mockup code in parent context.
+- [x] Add documentation for preferred single-file import build.
 
 ### M2-07 iframe
 
-- [ ] Add actual iframe to Preview area.
-- [ ] Load imported preview.
-- [ ] Detect load success/failure.
-- [ ] Confirm parent can read `contentDocument`.
-- [ ] Show clear error if DOM access is unavailable.
-- [ ] Do not implement selection.
+- [x] Add actual iframe to Preview area.
+- [x] Load imported preview.
+- [x] Detect load success/failure.
+- [x] Confirm parent can read `contentDocument`.
+- [x] Show clear error if DOM access is unavailable.
+- [x] Do not implement selection.
 
 ### M2-08 Route construction
 
-- [ ] Add one route/hash builder utility.
-- [ ] Implement `{entry}#{path}?uilabState={state}` semantics.
-- [ ] Test Home-like route.
-- [ ] Test state encoding.
-- [ ] Avoid duplicated route-building logic.
+- [x] Add one route/hash builder utility.
+- [x] Implement `{entry}#{path}?uilabState={state}` semantics.
+- [x] Test Home-like route.
+- [x] Test state encoding.
+- [x] Avoid duplicated route-building logic.
 
 ### M2-09 Screen panel
 
-- [ ] Populate screens from imported adapter.
-- [ ] Select appropriate initial screen.
-- [ ] Update current screen on click.
-- [ ] On screen change, use screen default state.
-- [ ] Update preview.
+- [x] Populate screens from imported adapter.
+- [x] Select appropriate initial screen.
+- [x] Update current screen on click.
+- [x] On screen change, use screen default state.
+- [x] Update preview.
 
 ### M2-10 States panel
 
-- [ ] Populate states for selected screen.
-- [ ] Select adapter default state after screen change.
-- [ ] Change state on click.
-- [ ] Update preview route.
+- [x] Populate states for selected screen.
+- [x] Select adapter default state after screen change.
+- [x] Change state on click.
+- [x] Update preview route.
 
 ### M2-11 Viewport integration
 
-- [ ] Apply adapter `defaultViewport` on import.
-- [ ] Keep Milestone 1 viewport presets working.
-- [ ] Verify viewport change does not re-import.
+- [x] Apply adapter `defaultViewport` on import.
+- [x] Keep Milestone 1 viewport presets working.
+- [x] Verify viewport change does not re-import.
 
 ### M2-12 Store imported adapter data
 
-- [ ] Store validated screens.
-- [ ] Store validated states.
-- [ ] Store validated components.
-- [ ] Store validated tokens.
-- [ ] Store source/project metadata.
-- [ ] Do not store JSZip object.
-- [ ] Do not persist Blob URL.
+- [x] Store validated screens.
+- [x] Store validated states.
+- [x] Store validated components.
+- [x] Store validated tokens.
+- [x] Store source/project metadata.
+- [x] Do not store JSZip object.
+- [x] Do not persist Blob URL.
 
 ### M2-13 Persistence behavior
 
-- [ ] Ensure existing project persistence remains safe.
-- [ ] Do not write ZIP/binary data to localStorage.
-- [ ] Define/document reload behavior.
-- [ ] If re-import is required after reload, surface that cleanly.
+- [x] Ensure existing project persistence remains safe.
+- [x] Do not write ZIP/binary data to localStorage.
+- [x] Define/document reload behavior.
+- [x] If re-import is required after reload, surface that cleanly.
 
 ### M2-14 Tests
 
-- [ ] Valid adapter import.
-- [ ] Invalid ZIP.
-- [ ] Missing adapter file.
-- [ ] Invalid JSON.
-- [ ] Unsupported formatVersion.
-- [ ] Invalid editable property.
-- [ ] Missing entry.
-- [ ] Screen population.
-- [ ] State population.
-- [ ] Screen switching.
-- [ ] State switching.
-- [ ] Default viewport applied.
-- [ ] Visible import error.
+- [x] Valid adapter import.
+- [x] Invalid ZIP.
+- [x] Missing adapter file.
+- [x] Invalid JSON.
+- [x] Unsupported formatVersion.
+- [x] Invalid editable property.
+- [x] Missing entry.
+- [x] Screen population.
+- [x] State population.
+- [x] Screen switching.
+- [x] State switching.
+- [x] Default viewport applied.
+- [x] Visible import error.
 
 ### M2-15 Documentation
 
-- [ ] Update README.
-- [ ] Update `docs/ARCHITECTURE.md`.
-- [ ] Document preview URL lifecycle.
-- [ ] Document trusted local mockup security scope.
-- [ ] Reference `UI_LAB_ADAPTER_SPEC_v1.md` as authoritative adapter contract.
+- [x] Update README.
+- [x] Update `docs/ARCHITECTURE.md`.
+- [x] Document preview URL lifecycle.
+- [x] Document trusted local mockup security scope.
+- [x] Reference `UI_LAB_ADAPTER_SPEC_v1.md` as authoritative adapter contract.
 
 ### M2-16 Final validation
 
-- [ ] Run lint.
-- [ ] Run typecheck.
-- [ ] Run full tests.
-- [ ] Run build.
-- [ ] Self-review diff.
-- [ ] Confirm no react-moveable.
-- [ ] Confirm no drag/resize.
-- [ ] Confirm no Inspector editing.
-- [ ] Confirm no Project ZIP Export.
-- [ ] Confirm no Codex Export.
-- [ ] Update `.ai/MILESTONE.md`.
+- [x] Run lint.
+- [x] Run typecheck.
+- [x] Run full tests.
+- [x] Run build.
+- [x] Self-review diff.
+- [x] Confirm no react-moveable.
+- [x] Confirm no drag/resize.
+- [x] Confirm no Inspector editing.
+- [x] Confirm no Project ZIP Export.
+- [x] Confirm no Codex Export.
+- [x] Update `.ai/MILESTONE.md`.
 
 ### M2-17 Commit / Push / PR
 
-- [ ] Commit Milestone 2 changes.
-- [ ] Push `feat/m2-mockup-import`.
+- [x] Commit Milestone 2 changes.
+- [x] Push `feat/m2-mockup-import`.
 - [ ] Create Pull Request targeting `main`.
 - [ ] PR body includes summary.
 - [ ] PR body includes test results.
 - [ ] PR body includes known limitations.
 - [ ] PR explicitly confirms Milestone 3+ functionality is excluded.
 - [ ] Do not merge automatically.
+
+PR creation remains manual because the local GitHub CLI token is invalid. Use the branch PR link after pushing, target `main`, and include the required summary, Adapter support, tests, known limitations, and explicit exclusions sections.
 
 ---
 

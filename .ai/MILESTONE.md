@@ -32,7 +32,7 @@ Known non-blocking issue:
 
 ## Milestone 2 — Mockup Import
 
-Status: TODO / NEXT
+Status: COMPLETE
 
 Branch:
 
@@ -59,6 +59,16 @@ Scope:
 - Import error UX
 - tests
 - PR creation
+
+Implemented:
+
+- Adapter v1 Zod validation and JSZip import
+- Single-file Blob URL iframe preview with DOM access readiness check
+- Hash route construction for screen/state changes
+- Screens, states, components, tokens, and default viewport integration
+- Trusted local import UX and readable validation/load errors
+- Re-import-required persistence behavior documentation
+- Synthetic importer and UI coverage
 
 Excluded:
 

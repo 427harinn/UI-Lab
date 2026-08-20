@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { VIEWPORT_PRESETS } from './viewportPresets'
 import { useEditorStore } from '../../features/project/store'
 
@@ -9,6 +10,10 @@ export function Toolbar() {
   const setViewport = useEditorStore((state) => state.setViewport)
   const undo = useEditorStore((state) => state.undo)
   const redo = useEditorStore((state) => state.redo)
+  const importMockupFile = useEditorStore((state) => state.importMockupFile)
+  const isImporting = useEditorStore((state) => state.isImporting)
+  const importError = useEditorStore((state) => state.importError)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const selectedPreset = VIEWPORT_PRESETS.find(
     (preset) => preset.width === viewport.width && preset.height === viewport.height,
@@ -41,11 +46,27 @@ export function Toolbar() {
           <button type="button" onClick={redo} disabled={!canRedo} aria-label="Redo">Redo</button>
         </div>
         <div className="toolbar__future-actions">
-          <button type="button" disabled title="Available in a later milestone">Import</button>
+          <input
+            ref={fileInputRef}
+            className="visually-hidden"
+            type="file"
+            accept=".zip,application/zip"
+            aria-label="Mockup ZIP file"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void importMockupFile(file)
+              event.target.value = ''
+            }}
+          />
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+            {isImporting ? 'Importing…' : 'Import'}
+          </button>
+          <span className="toolbar__trusted-note">Trusted local ZIP</span>
           <button type="button" disabled title="Available in a later milestone">Project Export</button>
           <button type="button" disabled title="Available in a later milestone">Codex Export</button>
         </div>
       </div>
+      {importError && <div className="toolbar__import-error" role="alert">{importError}</div>}
     </header>
   )
 }
