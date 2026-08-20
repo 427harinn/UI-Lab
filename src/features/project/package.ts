@@ -187,6 +187,64 @@ function validateAdapterDocuments(
   }
 }
 
+function mismatch(path: string): never {
+  throw schemaMismatch(`project.json and ${path} disagree`)
+}
+
+function sameJson(first: unknown, second: unknown): boolean {
+  return stableJson(first) === stableJson(second)
+}
+
+function validateProjectAdapterConsistency(
+  project: UiLabProject,
+  adapter: ReturnType<typeof validateAdapterDocuments>,
+): void {
+  if (project.source.type !== 'mockup') return
+
+  // source.name identifies the imported Adapter project. project.name is the
+  // editable UI Lab session name and may intentionally be renamed.
+  if (project.source.name !== adapter.project.name) mismatch('adapter/project.json name')
+
+  const projectScreenIds = project.screens.map((screen) => screen.id).sort()
+  const adapterScreenIds = Object.keys(adapter.screens).sort()
+  if (!sameJson(projectScreenIds, adapterScreenIds)) mismatch('adapter/screens.json screen IDs')
+  if (!sameJson(Object.keys(adapter.states).sort(), adapterScreenIds)) mismatch('adapter/states.json screen IDs')
+
+  for (const screenId of adapterScreenIds) {
+    const projectScreen = project.screens.find((screen) => screen.id === screenId)
+    const adapterScreen = adapter.screens[screenId]
+    if (!projectScreen || projectScreen.name !== adapterScreen.name || projectScreen.route !== adapterScreen.path) {
+      mismatch(`adapter/screens.json screen “${screenId}” identity`)
+    }
+
+    const projectStates = Object.fromEntries((projectScreen?.states ?? []).map((state) => [state.id, { name: state.name }]))
+    const adapterStates = Object.fromEntries(Object.entries(adapter.states[screenId] ?? {}).map(([id, state]) => [id, { name: state.name }]))
+    if (!sameJson(projectStates, adapterStates)) mismatch(`adapter/states.json screen “${screenId}” states`)
+    if (!Object.prototype.hasOwnProperty.call(adapterStates, adapterScreen.defaultState)) {
+      mismatch(`adapter/screens.json screen “${screenId}” defaultState`)
+    }
+  }
+
+  const projectComponentIds = project.components.map((component) => component.id).sort()
+  const adapterComponentIds = Object.keys(adapter.components).sort()
+  if (!sameJson(projectComponentIds, adapterComponentIds)) mismatch('adapter/components.json component IDs')
+  for (const componentId of adapterComponentIds) {
+    const projectComponent = project.components.find((component) => component.id === componentId)
+    const adapterComponent = adapter.components[componentId]
+    if (!projectComponent
+      || projectComponent.selector !== adapterComponent.selector
+      || projectComponent.instances !== adapterComponent.instances
+      || !sameJson(projectComponent.editableProperties, adapterComponent.editable)) {
+      mismatch(`adapter/components.json component “${componentId}” definition`)
+    }
+  }
+
+  if (!sameJson(project.tokens, adapter.tokens)) mismatch('adapter/tokens.json tokens')
+
+  // project.viewport is the current editor viewport and can differ from the
+  // Adapter's immutable defaultViewport after a user selects a preset.
+}
+
 export function stableJson(value: unknown): string {
   const canonicalize = (input: unknown): unknown => {
     if (Array.isArray(input)) return input.map(canonicalize)
@@ -289,6 +347,7 @@ export async function loadProjectPackage(input: Blob | ArrayBuffer | Uint8Array)
   const adapterStates = await readRequiredJson(zip, 'adapter/states.json')
   const previewHtml = await readPreview(zip)
   const adapter = validateAdapterDocuments(projectResult.data.project, adapterProject, adapterScreens, adapterComponents, adapterTokens, adapterStates)
+  validateProjectAdapterConsistency(projectResult.data.project, adapter)
 
   const importedMockup = projectResult.data.project.source.type === 'mockup'
     ? {

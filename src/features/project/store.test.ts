@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import JSZip from 'jszip'
+import type { ImportedMockup } from '../../schemas/adapter'
 import { createBlankProject } from './blankProject'
 import { createEditorStore } from './store'
 import { serializeProjectPackage } from './package'
@@ -103,5 +105,31 @@ describe('editor store', () => {
     expect(store.getState().currentProject.name).toBe('Imported project')
     expect(store.getState().currentProject).not.toEqual(before)
     expect(store.getState().importError).toContain('readable ZIP')
+  })
+
+  it('keeps the current project unchanged when cross-validation rejects a mismatched package', async () => {
+    const project = createBlankProject()
+    project.source = { type: 'mockup', name: 'Cross-check mockup' }
+    project.screens = [{ id: 'home', name: 'Home', route: '/home', states: [{ id: 'normal', name: 'Normal' }] }]
+    project.components = [{ id: 'Home.TaskRow', name: 'Home.TaskRow', type: 'Home.TaskRow', selector: '[data-row]', instances: 'single', editableProperties: ['width'] }]
+    project.tokens = { accent: '#f00' }
+    project.editor = { currentScreenId: 'home', currentStateId: 'normal' }
+    const imported: ImportedMockup = {
+      name: 'Cross-check mockup', formatVersion: 1, entry: 'dist/index.html', defaultViewport: { width: 390, height: 844 },
+      screens: [{ id: 'home', name: 'Home', path: '/home', defaultState: 'normal' }],
+      components: [{ id: 'Home.TaskRow', selector: '[data-row]', instances: 'single', editable: ['width'] }],
+      tokens: { accent: '#f00' }, states: [{ id: 'normal', screenId: 'home', name: 'Normal' }],
+      previewHtml: '<!doctype html><html><body></body></html>',
+    }
+    store.getState().replaceProject(project)
+    const before = store.getState().currentProject
+    const zip = await JSZip.loadAsync(await serializeProjectPackage(project, imported))
+    zip.file('adapter/tokens.json', JSON.stringify({ accent: '#00f' }))
+
+    const result = await store.getState().importProjectFile(await zip.generateAsync({ type: 'uint8array' }))
+
+    expect(result).toBe(false)
+    expect(store.getState().currentProject).toEqual(before)
+    expect(store.getState().importError).toContain('project.json and adapter/tokens.json tokens disagree')
   })
 })

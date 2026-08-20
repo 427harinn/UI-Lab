@@ -34,7 +34,7 @@ describe('.ui-project package', () => {
     const project = createBlankProject()
     project.name = 'HouseToDo'
     project.source = { type: 'mockup', name: 'HouseToDo' }
-    project.viewport = { width: 430, height: 932 }
+    project.viewport = { width: 390, height: 844 }
     project.screens = [{ id: 'home', name: 'Home', route: '/home', states: [{ id: 'normal', name: 'Normal' }] }]
     project.components = [{ id: 'Home.TaskRow', name: 'Home.TaskRow', type: 'Home.TaskRow', selector: '[data-row]', instances: 'multiple', editableProperties: ['position', 'width', 'background'] }]
     project.tokens = { color: { accent: '#6f8cff' } }
@@ -50,13 +50,46 @@ describe('.ui-project package', () => {
 
     const loaded = await loadProjectPackage(bytes)
     expect(loaded.project).toEqual(project)
-    expect(loaded.project.viewport).toEqual({ width: 430, height: 932 })
+    expect(loaded.project.viewport).toEqual({ width: 390, height: 844 })
     expect(loaded.project.changes[0].after).toBe(206)
     expect(loaded.importedMockup).toMatchObject({
       name: 'HouseToDo',
       entry: 'dist/index.html',
       tokens: { color: { accent: '#6f8cff' } },
       previewHtml: expect.stringContaining('Task Bird'),
+    })
+  })
+
+  it('rejects individually valid packages whose project and Adapter metadata diverge', async () => {
+    const project = createBlankProject()
+    project.source = { type: 'mockup', name: 'HouseToDo' }
+    project.screens = [{ id: 'home', name: 'Home', route: '/home', states: [{ id: 'normal', name: 'Normal' }] }]
+    project.components = [{ id: 'Home.TaskRow', name: 'Home.TaskRow', type: 'Home.TaskRow', selector: '[data-row]', instances: 'multiple', editableProperties: ['position', 'width', 'background'] }]
+    project.editor = { currentScreenId: 'home', currentStateId: 'normal' }
+    const imported = createImportedMockup()
+
+    async function expectMismatch(path: string, update: (value: Record<string, unknown>) => void) {
+      const zip = await unzip(await serializeProjectPackage(project, imported))
+      const file = zip.file(path)
+      if (!file) throw new Error(`Missing test fixture entry ${path}`)
+      const value = JSON.parse(await file.async('string')) as Record<string, unknown>
+      update(value)
+      zip.file(path, JSON.stringify(value))
+      await expect(loadProjectPackage(await zip.generateAsync({ type: 'uint8array' }))).rejects.toMatchObject({ code: 'schema-mismatch' })
+    }
+
+    await expectMismatch('adapter/components.json', (value) => {
+      const components = value['Home.TaskRow'] as Record<string, unknown>
+      components.editable = ['width']
+    })
+    await expectMismatch('adapter/screens.json', (value) => {
+      const home = value.home as Record<string, unknown>
+      home.path = '/different'
+    })
+    await expectMismatch('adapter/tokens.json', (value) => { value.color = { accent: '#000' } })
+    await expectMismatch('adapter/states.json', (value) => {
+      const home = value.home as Record<string, unknown>
+      home.normal = { name: 'Changed' }
     })
   })
 

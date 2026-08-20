@@ -19,6 +19,8 @@ HouseToDo.ui-project
 
 `project.json` contains the independent package `formatVersion` and the complete current project under `project`. The package version must not be confused with Adapter v1's `formatVersion` or the nested UI Lab project version. The nested project contains source metadata, viewport, screens/states, components, tokens, changes, and editor screen/state identity. Adapter metadata and imported preview HTML are stored separately so the original mockup ZIP is not required for restore.
 
+For mockup sources, Import cross-validates the project and Adapter documents for source identity, screens/routes/default states, state IDs/names, component selectors/instances/editable properties, and tokens. `project.viewport` is the current editor viewport and may differ from Adapter `defaultViewport`, which remains source metadata.
+
 `loadProjectPackage()` calls `migrateProjectPackageDocument()` before current-schema validation. Future package migrations belong at that boundary.
 
 ```ts

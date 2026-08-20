@@ -75,6 +75,8 @@ loadProjectPackage()
 
 The loader is atomic at the store boundary: all asynchronous ZIP work happens before `currentProject`, `importedMockup`, viewport, or history are changed. Errors update only the readable toolbar error. The existing trusted local iframe security scope is retained; archived preview HTML is treated like imported mockup HTML and is not fetched remotely or executed in the parent.
 
+For mockup projects, Import also cross-validates the normalized project against Adapter metadata: source identity, screen IDs/names/routes/default states, state IDs/names, component IDs/selectors/instances/editable properties, and tokens must agree. The current editor viewport is intentionally not compared with Adapter `defaultViewport`, because a user may change the editor viewport preset while preserving the source's original default viewport metadata.
+
 localStorage remains a lightweight metadata convenience, not a binary project store. A reload may require selecting the `.ui-project` again, which is surfaced by the existing “Re-import required” state for mockup metadata without attempting to serialize preview HTML.
 
 ## Deliberate boundaries
