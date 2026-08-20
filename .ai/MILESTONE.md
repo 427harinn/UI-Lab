@@ -179,11 +179,22 @@ Excluded:
 
 ## Milestone 6 — Codex Export
 
-Status: TODO
+Status: COMPLETE
 
 Goal:
 
 Generate change specifications and reference screenshots for Codex.
+
+Implemented:
+
+- Deterministic Codex implementation ZIP separate from `.ui-project`.
+- Zod validation for export format, changes, value types, screens, tokens, and manifest.
+- Final same-scope change resolution and stable sorting.
+- Exact / visual / target semantics and semantic component guidance.
+- Adapter screen/state/component stale-target validation.
+- Local browser screenshot boundary with all-or-nothing screenshot handling.
+- Generated `IMPLEMENTATION.md`, `DESIGN.md`, and reference PNGs.
+- Toolbar `Export for Codex`, unit/integration coverage, Playwright E2E, and M6 evidence screenshots.
 
 ---
 
