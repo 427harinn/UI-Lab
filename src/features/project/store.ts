@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { getScreenPath, getStatesForScreen, resolveDefaultState, type ImportedMockup } from '../../schemas/adapter'
 import type { UiLabProject, Viewport } from '../../schemas/project'
 import { importMockupZip } from '../mockup/importer'
+import type { SelectedElementSnapshot } from '../visual-editing/model'
 import { loadPersistedProject, persistProject, type ProjectStorage } from './persistence'
 
 export interface EditorStore {
@@ -10,6 +11,8 @@ export interface EditorStore {
   currentScreenId?: string
   currentStateId?: string
   selectedElementId?: string
+  selectedComponentId?: string
+  selectedElement?: SelectedElementSnapshot
   importedMockup?: ImportedMockup
   isImporting: boolean
   importError?: string
@@ -21,6 +24,8 @@ export interface EditorStore {
   setCurrentScreenId: (screenId?: string) => void
   setCurrentStateId: (stateId?: string) => void
   setSelectedElementId: (elementId?: string) => void
+  setSelection: (selection?: SelectedElementSnapshot) => void
+  updateSelectionFrame: (frame: SelectedElementSnapshot['frame']) => void
   importMockupFile: (input: Blob | ArrayBuffer | Uint8Array) => Promise<boolean>
   setImportError: (message?: string) => void
   updateProjectName: (name: string) => void
@@ -36,6 +41,10 @@ function getBrowserStorage(): ProjectStorage | undefined {
 
 function updateHistoryFlags(past: UiLabProject[], future: UiLabProject[]) {
   return { past, future, canUndo: past.length > 0, canRedo: future.length > 0 }
+}
+
+function clearSelection() {
+  return { selectedElementId: undefined, selectedComponentId: undefined, selectedElement: undefined }
 }
 
 function createImportedProject(imported: ImportedMockup): UiLabProject {
@@ -84,7 +93,7 @@ function createStore(storage: ProjectStorage | undefined) {
           viewport: project.viewport,
           currentScreenId: project.editor.currentScreenId,
           currentStateId: project.editor.currentStateId,
-          selectedElementId: project.editor.selectedElementId,
+          selectedElementId: state.selectedElementId,
           ...updateHistoryFlags(past, []),
         }
       })
@@ -96,6 +105,8 @@ function createStore(storage: ProjectStorage | undefined) {
       currentScreenId: initialProject.editor.currentScreenId,
       currentStateId: initialProject.editor.currentStateId,
       selectedElementId: initialProject.editor.selectedElementId,
+      selectedComponentId: undefined,
+      selectedElement: undefined,
       importedMockup: undefined,
       isImporting: false,
       importError: undefined,
@@ -116,18 +127,31 @@ function createStore(storage: ProjectStorage | undefined) {
         const currentProject = state.currentProject
         const nextProject = {
           ...currentProject,
-          editor: { ...currentProject.editor, currentScreenId, currentStateId },
+          editor: { ...currentProject.editor, currentScreenId, currentStateId, selectedElementId: undefined },
         }
         persistProject(nextProject, storage)
-        set({ currentProject: nextProject, currentScreenId, currentStateId })
+        set({ currentProject: nextProject, currentScreenId, currentStateId, ...clearSelection() })
       },
       setCurrentStateId: (currentStateId) => {
         const currentProject = get().currentProject
-        const nextProject = { ...currentProject, editor: { ...currentProject.editor, currentStateId } }
+        const nextProject = { ...currentProject, editor: { ...currentProject.editor, currentStateId, selectedElementId: undefined } }
         persistProject(nextProject, storage)
-        set({ currentProject: nextProject, currentStateId })
+        set({ currentProject: nextProject, currentStateId, ...clearSelection() })
       },
-      setSelectedElementId: (selectedElementId) => set({ selectedElementId }),
+      setSelectedElementId: (selectedElementId) => set(selectedElementId
+        ? { selectedElementId }
+        : clearSelection()),
+      setSelection: (selectedElement) => set({
+        selectedElement,
+        selectedElementId: selectedElement?.elementId,
+        selectedComponentId: selectedElement?.componentId,
+      }),
+      updateSelectionFrame: (frame) => set((state) => {
+        if (!state.selectedElement) return state
+        const current = state.selectedElement.frame
+        if (current.x === frame.x && current.y === frame.y && current.width === frame.width && current.height === frame.height) return state
+        return { selectedElement: { ...state.selectedElement, frame } }
+      }),
       importMockupFile: async (input) => {
         set({ isImporting: true, importError: undefined })
         try {
@@ -139,7 +163,7 @@ function createStore(storage: ProjectStorage | undefined) {
             viewport: project.viewport,
             currentScreenId: project.editor.currentScreenId,
             currentStateId: project.editor.currentStateId,
-            selectedElementId: project.editor.selectedElementId,
+            ...clearSelection(),
             importedMockup,
             isImporting: false,
             importError: undefined,
@@ -164,7 +188,7 @@ function createStore(storage: ProjectStorage | undefined) {
           viewport: project.viewport,
           currentScreenId: project.editor.currentScreenId,
           currentStateId: project.editor.currentStateId,
-          selectedElementId: project.editor.selectedElementId,
+          ...clearSelection(),
           importedMockup: undefined,
           importError: undefined,
           ...updateHistoryFlags([], []),
@@ -183,7 +207,7 @@ function createStore(storage: ProjectStorage | undefined) {
             viewport: previous.viewport,
             currentScreenId: previous.editor.currentScreenId,
             currentStateId: previous.editor.currentStateId,
-            selectedElementId: previous.editor.selectedElementId,
+            ...clearSelection(),
             ...updateHistoryFlags(past, future),
           }
         })
@@ -200,7 +224,7 @@ function createStore(storage: ProjectStorage | undefined) {
             viewport: next.viewport,
             currentScreenId: next.editor.currentScreenId,
             currentStateId: next.editor.currentStateId,
-            selectedElementId: next.editor.selectedElementId,
+            ...clearSelection(),
             ...updateHistoryFlags(past, future),
           }
         })

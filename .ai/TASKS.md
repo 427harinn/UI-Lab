@@ -187,6 +187,61 @@ PR creation remains manual because the local GitHub CLI token is invalid. Use th
 
 ---
 
+## Milestone 3 — Visual Editing
+
+Branch:
+
+```text
+feat/m3-visual-editing
+```
+
+### M3-01 Workflow and dependency
+
+- [x] Update local `main`.
+- [x] Create `feat/m3-visual-editing`.
+- [x] Add `react-moveable`.
+
+### M3-02 Discovery and selection
+
+- [x] Discover only Adapter selector-matched DOM elements.
+- [x] Require `data-uilab-component` and `data-uilab-id`.
+- [x] Keep semantic component ID separate from rendered instance ID.
+- [x] Select instances by iframe click.
+- [x] Store selection IDs and serializable measurements, never DOM nodes.
+
+### M3-03 Visual interaction
+
+- [x] Render Moveable inside the iframe document.
+- [x] Gate drag by `position`.
+- [x] Gate resize by `width` / `height`.
+- [x] Keep non-editable resize axes fixed.
+- [x] Apply preview transforms and dimensions immediately.
+- [x] Display X / Y / W / H in the Inspector placeholder.
+
+### M3-04 Snap and guides
+
+- [x] Enable viewport edge and center guidelines.
+- [x] Use other editable elements as guide sources.
+- [x] Display snap-active status during interaction.
+
+### M3-05 History and lifecycle
+
+- [x] Commit completed drag as one project history entry.
+- [x] Commit completed resize as one project history entry.
+- [x] Apply committed changes on undo and redo.
+- [x] Reset selection on screen/state change and new import.
+- [x] Re-discover targets after iframe reload.
+
+### M3-06 Tests, documentation, and evidence
+
+- [x] Add discovery, capability, coordinate, change, and history tests.
+- [x] Add synthetic Adapter v1 Playwright coverage.
+- [x] Capture selected, moved/resized, and snap/guide screenshots.
+- [x] Document iframe, coordinate, target lifecycle, and history architecture.
+- [x] Run lint, typecheck, tests, build, and E2E.
+
+---
+
 ## Implementation rule
 
 After each small task:
