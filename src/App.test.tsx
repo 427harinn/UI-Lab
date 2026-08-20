@@ -137,4 +137,34 @@ describe('editor shell', () => {
     useEditorStore.getState().redo()
     expect(useEditorStore.getState().currentProject.changes[0].after).toBe(180)
   })
+
+  it('preserves fractional geometry in inputs and supports fractional Undo/Redo', () => {
+    const project = createBlankProject()
+    project.screens = [{ id: 'home', name: 'Home', route: '/home', states: [{ id: 'normal', name: 'Normal' }] }]
+    project.components = [{ id: 'Home.TaskRow', name: 'Task Row', type: 'row', selector: '[data-row]', instances: 'single', editableProperties: ['position', 'width', 'height'] }]
+    project.editor = { currentScreenId: 'home', currentStateId: 'normal' }
+    useEditorStore.getState().replaceProject(project)
+    useEditorStore.getState().setSelection({
+      elementId: 'task-bird', componentId: 'Home.TaskRow',
+      frame: { x: 104.5, y: 182.25, width: 206.5, height: 72.75 },
+      editableProperties: ['position', 'width', 'height'],
+    })
+    render(<App />)
+
+    expect(screen.getByLabelText('X', { exact: true })).toHaveValue(104.5)
+    expect(screen.getByLabelText('W', { exact: true })).toHaveValue(206.5)
+    fireEvent.blur(screen.getByLabelText('X', { exact: true }))
+    fireEvent.blur(screen.getByLabelText('W', { exact: true }))
+    expect(useEditorStore.getState().currentProject.changes).toHaveLength(0)
+
+    fireEvent.change(screen.getByLabelText('X', { exact: true }), { target: { value: '120.25' } })
+    fireEvent.blur(screen.getByLabelText('X', { exact: true }))
+    expect(useEditorStore.getState().currentProject.changes[0]).toMatchObject({
+      property: 'position', before: { x: 104.5, y: 182.25 }, after: { x: 120.25, y: 182.25 }, valueType: 'visual',
+    })
+    useEditorStore.getState().undo()
+    expect(useEditorStore.getState().currentProject.changes).toHaveLength(0)
+    useEditorStore.getState().redo()
+    expect(useEditorStore.getState().currentProject.changes[0].after).toMatchObject({ x: 120.25, y: 182.25 })
+  })
 })

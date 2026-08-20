@@ -9,9 +9,10 @@ import {
   readComputedStyleSnapshot,
 } from './inspector'
 import {
+  applyInspectorStyleOverrides,
   createStyleChange,
-  resolveInspectorStyles,
   upsertChange,
+  resolveInspectorStyles,
 } from './changes'
 
 describe('Inspector property model', () => {
@@ -71,5 +72,21 @@ describe('Inspector property model', () => {
       color: '#000000', background: '#ffffff', border: 'none', borderRadius: 0, opacity: 1,
     }).fontSize).toBe(18)
   })
-})
 
+  it('applies fontWeight without px and keeps it undoable as an exact style', () => {
+    const element = document.createElement('div')
+    element.style.fontWeight = '400'
+    document.body.appendChild(element)
+    const project = createBlankProject()
+    project.changes = [createStyleChange('home', 'normal', 'task', 'Home.TaskRow', 'fontWeight', 400, 600)]
+
+    applyInspectorStyleOverrides(element, { fontWeight: '400' }, project, 'home', 'normal', 'task', {
+      padding: 0, margin: 0, gap: 0, fontSize: 16, fontWeight: 400, lineHeight: 19.2,
+      color: '#000000', background: '#ffffff', border: 'none', borderRadius: 0, opacity: 1,
+    })
+
+    expect(element.style.fontWeight).toBe('600')
+    expect(element.style.fontWeight).not.toContain('px')
+    expect(project.changes[0]).toMatchObject({ property: 'fontWeight', before: 400, after: 600, valueType: 'exact' })
+  })
+})

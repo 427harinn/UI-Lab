@@ -164,9 +164,10 @@ export function applyInspectorStyleOverrides(
     const cssName = cssPropertyName(property)
     if (styleChangeExists(project, screenId, stateId, elementId, property)) {
       const value = styles[property]
+      const isUnitless = property === 'fontWeight' || property === 'opacity'
       const cssValue = property === 'opacity'
         ? String(clampOpacity(Number(value)))
-        : typeof value === 'number' ? `${value}px` : value
+        : typeof value === 'number' && !isUnitless ? `${value}px` : String(value)
       element.style.setProperty(cssName, cssValue)
     } else if (baseInlineStyles[property]) {
       element.style.setProperty(cssName, baseInlineStyles[property] ?? '')

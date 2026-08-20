@@ -17,7 +17,7 @@ function isStyleProperty(property: EditableProperty): property is InspectorStyle
 }
 
 function displayValue(value: InspectorValue): string {
-  return typeof value === 'number' ? String(Number(value.toFixed(2))) : value
+  return String(value)
 }
 
 interface InspectorInputProps {
@@ -186,13 +186,13 @@ export function InspectorPanel() {
         </dl>
 
         {isEditable('position') && <section className="inspector-section"><h3>Position</h3><div className="inspector-fields">
-          <InspectorInput key={`x-${selectedElement.frame.x}`} label="X" value={Math.round(selectedElement.frame.x)} type="number" onCommit={(raw) => commitPosition('x', raw)} />
-          <InspectorInput key={`y-${selectedElement.frame.y}`} label="Y" value={Math.round(selectedElement.frame.y)} type="number" onCommit={(raw) => commitPosition('y', raw)} />
+          <InspectorInput key={`x-${selectedElement.frame.x}`} label="X" value={selectedElement.frame.x} type="number" onCommit={(raw) => commitPosition('x', raw)} />
+          <InspectorInput key={`y-${selectedElement.frame.y}`} label="Y" value={selectedElement.frame.y} type="number" onCommit={(raw) => commitPosition('y', raw)} />
         </div></section>}
 
         {(isEditable('width') || isEditable('height')) && <section className="inspector-section"><h3>Size</h3><div className="inspector-fields">
-          {isEditable('width') && <PropertyInput property="width" label="W" value={Math.round(selectedElement.frame.width)} disabled={false} onCommit={commitValue} />}
-          {isEditable('height') && <PropertyInput property="height" label="H" value={Math.round(selectedElement.frame.height)} disabled={false} onCommit={commitValue} />}
+          {isEditable('width') && <PropertyInput property="width" label="W" value={selectedElement.frame.width} disabled={false} onCommit={commitValue} />}
+          {isEditable('height') && <PropertyInput property="height" label="H" value={selectedElement.frame.height} disabled={false} onCommit={commitValue} />}
         </div></section>}
 
         {(['fontSize', 'fontWeight', 'lineHeight'] as InspectorStyleProperty[]).some(isEditable) && <section className="inspector-section"><h3>Typography</h3><div className="inspector-fields">{renderStyleProperty('fontSize', 'Font Size')}{renderStyleProperty('fontWeight', 'Font Weight')}{renderStyleProperty('lineHeight', 'Line Height')}</div></section>}
