@@ -34,15 +34,15 @@ Selection state contains only the component ID, instance ID, editable properties
 
 ### Moveable placement and coordinates
 
-The Moveable React component is rendered through a React portal into an overlay root appended to the iframe document body. Its `target`, `container`, and `rootContainer` therefore share the iframe document's coordinate space. This avoids mixing the parent document's iframe offset with target `getBoundingClientRect()` values. The overlay root is fixed to the iframe content area and is recreated with the iframe document. Resize directions are mirrored by a small iframe-local pointer handle layer so resizing remains reliable across iframe pointer lifecycles; it uses the same Moveable-aligned frame and history path.
+The Moveable React component is rendered through a React portal into an overlay root appended to the iframe document body. Its `target`, `container`, and `rootContainer` therefore share the iframe document's coordinate space. This avoids mixing the parent document's iframe offset with target `getBoundingClientRect()` values. The overlay root is fixed to the iframe content area and is recreated with the iframe document. Resize directions are mirrored by a small iframe-local pointer handle layer so resizing remains reliable across iframe pointer lifecycles; it uses the same Moveable-aligned frame and history path. North/west handles are exposed only when `position` is editable, while position-locked targets can resize only from their east/south edges.
 
 All measurements use the iframe preview content area as origin `(0, 0)`. A normalized frame is `getBoundingClientRect()` plus the iframe document's scroll offset; the parent iframe element's position is intentionally never included. Viewport edges, viewport center lines, and other discovered editable elements are passed to Moveable as snap guide sources.
 
 ### Temporary visual changes and history
 
-The editor captures each target's initial inline transform, width, and height in `data-uilab-*` attributes on the transient iframe DOM. Drag applies a translate delta; resize applies width/height inline styles. These are preview-only adjustments and do not rewrite imported source or CSS.
+The editor captures each target's initial inline transform, width, and height in `data-uilab-*` attributes on the transient iframe DOM. Drag applies a translate delta; resize applies width/height inline styles and, for position-editable targets, the corresponding north/west x/y delta. Each completed interaction is committed as one history transaction, so a north/west resize can be undone and redone with its dimensions and position together. These are preview-only adjustments and do not rewrite imported source or CSS.
 
-Completed operations append Adapter-scoped `UiChange` records: drag uses one `position` record, while resize uses at most one `width` and one `height` record. The store commits the entire operation once on pointer release, so pointer-move events do not create history entries. Undo/redo swaps the project snapshot and `Preview` re-applies the resolved changes to the current iframe target using its captured baseline frame.
+Completed operations append Adapter-scoped `UiChange` records: drag uses one `position` record, while resize uses at most one `position`, one `width`, and one `height` record. The store commits the entire operation once on pointer release, so pointer-move events do not create history entries. Undo/redo swaps the project snapshot and `Preview` re-applies the resolved changes to the current iframe target using its captured baseline frame.
 
 ## Deliberate boundaries
 

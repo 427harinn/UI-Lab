@@ -37,6 +37,18 @@ export function canResizeHeight(target: Pick<EditableElementTarget, 'editablePro
   return target.editableProperties.includes('height')
 }
 
+export function getResizeDirections(target: Pick<EditableElementTarget, 'editableProperties'>): string[] {
+  const width = canResizeWidth(target)
+  const height = canResizeHeight(target)
+  const position = canDragTarget(target)
+
+  if (width && height && position) return ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']
+  if (width && height) return ['e', 's', 'se']
+  if (width) return position ? ['w', 'e'] : ['e']
+  if (height) return position ? ['n', 's'] : ['s']
+  return []
+}
+
 export function normalizeRectToContentArea(
   rect: Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>,
   scrollX = 0,

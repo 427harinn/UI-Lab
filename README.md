@@ -36,7 +36,7 @@ Imports are trusted local content. Remote URLs, backend execution, and arbitrary
 
 The authoritative Adapter v1 contract is [UI_LAB_ADAPTER_SPEC_v1.md](UI_LAB_ADAPTER_SPEC_v1.md). The implementation keeps adapter-specific validation isolated in `src/schemas/adapter.ts` and normalizes the external object documents into the internal editor model only after validation.
 
-Milestone 3 supports selecting Adapter-exposed instances, dragging elements whose Adapter allows `position`, resizing elements whose Adapter allows `width` and/or `height`, snapping to viewport/element guides, and reviewing X/Y/W/H in the Inspector placeholder. Changes are preview-only and are committed to the existing undo/redo history when an interaction completes.
+Milestone 3 supports selecting Adapter-exposed instances, dragging elements whose Adapter allows `position`, resizing elements whose Adapter allows `width` and/or `height`, snapping to viewport/element guides, and reviewing X/Y/W/H in the Inspector placeholder. Position-editable north/west resizing persists x/y and dimensions in one undo/redo transaction; position-locked targets expose only east/south resize handles. Changes are preview-only and are committed to the existing undo/redo history when an interaction completes.
 
 Moveable controls render inside the imported iframe document so all measurements use the preview content area's `(0, 0)` origin. Selection is reset when screen/state/import/iframe lifecycle changes. Styling Inspector editing, Project/Codex Export, source rewriting, and screenshot export remain future milestones.
 

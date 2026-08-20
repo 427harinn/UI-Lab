@@ -6,6 +6,7 @@ import {
   canResizeHeight,
   canResizeTarget,
   canResizeWidth,
+  getResizeDirections,
   normalizeRectToContentArea,
 } from './model'
 import { createBlankProject } from '../project/blankProject'
@@ -42,6 +43,15 @@ describe('visual editing model', () => {
     expect(canResizeWidth({ editableProperties: ['width'] })).toBe(true)
     expect(canResizeHeight({ editableProperties: ['width'] })).toBe(false)
     expect(canResizeHeight({ editableProperties: ['height'] })).toBe(true)
+  })
+
+  it('only exposes north/west resize directions when position is editable', () => {
+    expect(getResizeDirections({ editableProperties: ['position', 'width', 'height'] })).toEqual([
+      'nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se',
+    ])
+    expect(getResizeDirections({ editableProperties: ['width', 'height'] })).toEqual(['e', 's', 'se'])
+    expect(getResizeDirections({ editableProperties: ['position', 'width'] })).toEqual(['w', 'e'])
+    expect(getResizeDirections({ editableProperties: ['height'] })).toEqual(['s'])
   })
 
   it('normalizes iframe content coordinates with document scroll, without iframe offset', () => {

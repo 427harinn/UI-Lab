@@ -11,6 +11,7 @@ import {
   canResizeTarget,
   canResizeWidth,
   getElementFrame,
+  getResizeDirections,
   type EditableElementTarget,
   type VisualFrame,
 } from '../../features/visual-editing/model'
@@ -27,17 +28,6 @@ interface InteractionState {
   target: EditableElementTarget
   before: VisualFrame
   current: VisualFrame
-}
-
-const ALL_RESIZE_DIRECTIONS = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']
-
-function getResizeDirections(target: EditableElementTarget): string[] {
-  const width = canResizeWidth(target)
-  const height = canResizeHeight(target)
-  if (width && height) return ALL_RESIZE_DIRECTIONS
-  if (width) return ['w', 'e']
-  if (height) return ['n', 's']
-  return []
 }
 
 function sameFrame(first: VisualFrame, second: VisualFrame): boolean {
@@ -196,6 +186,17 @@ export function Preview() {
         interaction.current,
       ))
     } else {
+      if (canDragTarget(interaction.target)
+        && (interaction.before.x !== interaction.current.x || interaction.before.y !== interaction.current.y)) {
+        nextChanges.push(createPositionChange(
+          activeScreenId,
+          activeStateId,
+          interaction.target.instanceId,
+          interaction.target.componentId,
+          interaction.before,
+          interaction.current,
+        ))
+      }
       if (canResizeWidth(interaction.target) && interaction.before.width !== interaction.current.width) {
         nextChanges.push(createDimensionChange(
           activeScreenId,
@@ -322,8 +323,8 @@ export function Preview() {
     if (!interaction || interaction.type !== 'resize') return
     const translate = event.drag?.beforeTranslate ?? [0, 0]
     updateInteractionFrame({
-      x: interaction.before.x + (translate[0] ?? 0),
-      y: interaction.before.y + (translate[1] ?? 0),
+      x: canDragTarget(interaction.target) ? interaction.before.x + (translate[0] ?? 0) : interaction.before.x,
+      y: canDragTarget(interaction.target) ? interaction.before.y + (translate[1] ?? 0) : interaction.before.y,
       width: canResizeWidth(interaction.target) ? Math.max(1, event.width) : interaction.before.width,
       height: canResizeHeight(interaction.target) ? Math.max(1, event.height) : interaction.before.height,
     })
