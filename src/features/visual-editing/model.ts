@@ -1,4 +1,5 @@
 import type { UiLabComponentDefinition, UiLabProject } from '../../schemas/project'
+import type { InspectorStyleSnapshot } from './inspector'
 
 export interface VisualFrame {
   x: number
@@ -19,6 +20,7 @@ export interface SelectedElementSnapshot {
   componentId: string
   frame: VisualFrame
   editableProperties: string[]
+  styles?: InspectorStyleSnapshot
 }
 
 export function canDragTarget(target: Pick<EditableElementTarget, 'editableProperties'>): boolean {

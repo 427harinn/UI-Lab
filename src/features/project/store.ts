@@ -3,6 +3,7 @@ import { getScreenPath, getStatesForScreen, resolveDefaultState, type ImportedMo
 import type { UiLabProject, Viewport } from '../../schemas/project'
 import { importMockupZip } from '../mockup/importer'
 import type { SelectedElementSnapshot } from '../visual-editing/model'
+import type { InspectorStyleSnapshot } from '../visual-editing/inspector'
 import { loadPersistedProject, persistProject, type ProjectStorage } from './persistence'
 
 export interface EditorStore {
@@ -26,6 +27,7 @@ export interface EditorStore {
   setSelectedElementId: (elementId?: string) => void
   setSelection: (selection?: SelectedElementSnapshot) => void
   updateSelectionFrame: (frame: SelectedElementSnapshot['frame']) => void
+  updateSelectionStyles: (styles: InspectorStyleSnapshot) => void
   importMockupFile: (input: Blob | ArrayBuffer | Uint8Array) => Promise<boolean>
   setImportError: (message?: string) => void
   updateProjectName: (name: string) => void
@@ -151,6 +153,12 @@ function createStore(storage: ProjectStorage | undefined) {
         const current = state.selectedElement.frame
         if (current.x === frame.x && current.y === frame.y && current.width === frame.width && current.height === frame.height) return state
         return { selectedElement: { ...state.selectedElement, frame } }
+      }),
+      updateSelectionStyles: (styles) => set((state) => {
+        if (!state.selectedElement) return state
+        const current = state.selectedElement.styles
+        const unchanged = current && Object.keys(styles).every((key) => current[key as keyof InspectorStyleSnapshot] === styles[key as keyof InspectorStyleSnapshot])
+        return unchanged ? state : { selectedElement: { ...state.selectedElement, styles } }
       }),
       importMockupFile: async (input) => {
         set({ isImporting: true, importError: undefined })

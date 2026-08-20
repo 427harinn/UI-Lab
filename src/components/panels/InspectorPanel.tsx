@@ -1,38 +1,205 @@
+import { useState } from 'react'
+import type { EditableProperty } from '../../schemas/adapter'
 import { useEditorStore } from '../../features/project/store'
+import {
+  defaultInspectorStyles,
+  inspectorStyleProperties,
+  isSafeCssValue,
+  parseInspectorNumber,
+  type InspectorStyleProperty,
+} from '../../features/visual-editing/inspector'
+import { createDimensionChange, createPositionChange, createStyleChange, upsertChange } from '../../features/visual-editing/changes'
+
+type InspectorValue = string | number
+
+function isStyleProperty(property: EditableProperty): property is InspectorStyleProperty {
+  return inspectorStyleProperties.includes(property as InspectorStyleProperty)
+}
+
+function displayValue(value: InspectorValue): string {
+  return typeof value === 'number' ? String(Number(value.toFixed(2))) : value
+}
+
+interface InspectorInputProps {
+  label: string
+  value: InspectorValue
+  disabled?: boolean
+  type?: 'number' | 'text'
+  min?: number
+  max?: number
+  step?: number
+  onCommit: (value: string) => void
+}
+
+function InspectorInput({ label, value, disabled, type = 'text', min, max, step, onCommit }: InspectorInputProps) {
+  const [draft, setDraft] = useState(displayValue(value))
+
+  return (
+    <label className="inspector-field">
+      <span>{label}</span>
+      <input
+        aria-label={label}
+        type={type}
+        value={draft}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => onCommit(draft)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            event.currentTarget.blur()
+          }
+        }}
+      />
+    </label>
+  )
+}
+
+function PropertyInput({
+  property,
+  label,
+  value,
+  disabled,
+  onCommit,
+}: {
+  property: EditableProperty
+  label: string
+  value: InspectorValue
+  disabled: boolean
+  onCommit: (property: EditableProperty, raw: string) => void
+}) {
+  const isOpacity = property === 'opacity'
+  const isNumber = typeof value === 'number'
+  return (
+    <div className="inspector-property-row">
+      <InspectorInput
+        key={`${property}-${displayValue(value)}`}
+        label={label}
+        value={value}
+        disabled={disabled}
+        type={isNumber ? 'number' : 'text'}
+        min={isOpacity ? 0 : undefined}
+        max={isOpacity ? 1 : undefined}
+        step={isOpacity ? 0.05 : undefined}
+        onCommit={(raw) => onCommit(property, raw)}
+      />
+      {property === 'color' && !disabled && (
+        <input className="inspector-color-picker" aria-label="Color picker" type="color" value={typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value : '#000000'} onChange={(event) => onCommit(property, event.target.value)} />
+      )}
+      {property === 'background' && !disabled && (
+        <input className="inspector-color-picker" aria-label="Background color picker" type="color" value={typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value : '#ffffff'} onChange={(event) => onCommit(property, event.target.value)} />
+      )}
+    </div>
+  )
+}
 
 export function InspectorPanel() {
   const selectedElement = useEditorStore((state) => state.selectedElement)
+  const project = useEditorStore((state) => state.currentProject)
+  const currentScreenId = useEditorStore((state) => state.currentScreenId)
+  const currentStateId = useEditorStore((state) => state.currentStateId)
+  const commitProject = useEditorStore((state) => state.commitProject)
+  const updateSelectionFrame = useEditorStore((state) => state.updateSelectionFrame)
+  const updateSelectionStyles = useEditorStore((state) => state.updateSelectionStyles)
+
+  if (!selectedElement) {
+    return (
+      <aside className="side-panel inspector-panel" aria-label="Inspector">
+        <div className="panel-heading"><div><p className="eyebrow">Properties</p><h2>Inspector</h2></div></div>
+        <div className="panel-empty"><span className="panel-empty__icon" aria-hidden="true">□</span><strong>Nothing selected</strong><span>Click an Adapter-exposed element in the preview.</span></div>
+      </aside>
+    )
+  }
+
+  const screen = project.screens.find((item) => item.id === currentScreenId)
+  const state = screen?.states.find((item) => item.id === currentStateId)
+  const styles = selectedElement.styles ?? defaultInspectorStyles
+  const isEditable = (property: EditableProperty) => selectedElement.editableProperties.includes(property)
+
+  const commitValue = (property: EditableProperty, raw: string) => {
+    if (!isEditable(property) || !currentScreenId) return
+    const componentId = selectedElement.componentId
+    const elementId = selectedElement.elementId
+    const currentFrame = selectedElement.frame
+    let change
+    let nextFrame = currentFrame
+    let nextStyles = styles
+
+    if (property === 'position') return
+    if (property === 'width' || property === 'height') {
+      const value = parseInspectorNumber(property, raw)
+      if (value === undefined || currentFrame[property] === value) return
+      nextFrame = { ...currentFrame, [property]: value }
+      change = createDimensionChange(currentScreenId, currentStateId, elementId, componentId, property, currentFrame[property], value)
+    } else if (isStyleProperty(property)) {
+      const currentValue = styles[property]
+      if (typeof currentValue === 'number') {
+        const value = parseInspectorNumber(property, raw)
+        if (value === undefined || currentValue === value) return
+        change = createStyleChange(currentScreenId, currentStateId, elementId, componentId, property, currentValue, value)
+        nextStyles = { ...styles, [property]: value }
+      } else {
+        if (!isSafeCssValue(property, raw) || currentValue === raw) return
+        change = createStyleChange(currentScreenId, currentStateId, elementId, componentId, property, currentValue, raw)
+        nextStyles = { ...styles, [property]: raw }
+      }
+    }
+    if (!change) return
+    commitProject({ ...project, changes: upsertChange(project.changes, change) })
+    if (property === 'width' || property === 'height') updateSelectionFrame(nextFrame)
+    if (isStyleProperty(property)) updateSelectionStyles(nextStyles)
+  }
+
+  const commitPosition = (axis: 'x' | 'y', raw: string) => {
+    if (!isEditable('position') || !currentScreenId) return
+    const value = parseInspectorNumber('position', raw)
+    if (value === undefined || selectedElement.frame[axis] === value) return
+    const after = { ...selectedElement.frame, [axis]: value }
+    const change = createPositionChange(currentScreenId, currentStateId, selectedElement.elementId, selectedElement.componentId, selectedElement.frame, after)
+    commitProject({ ...project, changes: upsertChange(project.changes, change) })
+    updateSelectionFrame({ ...selectedElement.frame, [axis]: value })
+  }
+
+  const renderStyleProperty = (property: InspectorStyleProperty, label: string) => (
+    isEditable(property) ? <PropertyInput key={property} property={property} label={label} value={styles[property]} disabled={false} onCommit={commitValue} /> : null
+  )
 
   return (
     <aside className="side-panel inspector-panel" aria-label="Inspector">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Properties</p>
-          <h2>Inspector</h2>
-        </div>
+      <div className="panel-heading"><div><p className="eyebrow">Properties</p><h2>Inspector</h2></div></div>
+      <div className="selection-summary" data-testid="selection-summary">
+        <div className="selection-summary__identity"><span className="selection-summary__label">Selected instance</span><strong>{selectedElement.componentId}</strong><span data-testid="selected-instance-id">{selectedElement.elementId}</span></div>
+        <dl className="inspector-context-grid">
+          <div><dt>Component ID</dt><dd>{selectedElement.componentId}</dd></div>
+          <div><dt>Instance ID</dt><dd>{selectedElement.elementId}</dd></div>
+          <div><dt>Screen</dt><dd>{screen?.name ?? currentScreenId ?? '—'}</dd></div>
+          <div><dt>State</dt><dd>{state?.name ?? currentStateId ?? '—'}</dd></div>
+        </dl>
+        <dl className="measurement-grid">
+          <div><dt>X</dt><dd data-testid="measurement-x">{Math.round(selectedElement.frame.x)}</dd></div>
+          <div><dt>Y</dt><dd data-testid="measurement-y">{Math.round(selectedElement.frame.y)}</dd></div>
+          <div><dt>W</dt><dd data-testid="measurement-width">{Math.round(selectedElement.frame.width)}</dd></div>
+          <div><dt>H</dt><dd data-testid="measurement-height">{Math.round(selectedElement.frame.height)}</dd></div>
+        </dl>
+
+        {isEditable('position') && <section className="inspector-section"><h3>Position</h3><div className="inspector-fields">
+          <InspectorInput key={`x-${selectedElement.frame.x}`} label="X" value={Math.round(selectedElement.frame.x)} type="number" onCommit={(raw) => commitPosition('x', raw)} />
+          <InspectorInput key={`y-${selectedElement.frame.y}`} label="Y" value={Math.round(selectedElement.frame.y)} type="number" onCommit={(raw) => commitPosition('y', raw)} />
+        </div></section>}
+
+        {(isEditable('width') || isEditable('height')) && <section className="inspector-section"><h3>Size</h3><div className="inspector-fields">
+          {isEditable('width') && <PropertyInput property="width" label="W" value={Math.round(selectedElement.frame.width)} disabled={false} onCommit={commitValue} />}
+          {isEditable('height') && <PropertyInput property="height" label="H" value={Math.round(selectedElement.frame.height)} disabled={false} onCommit={commitValue} />}
+        </div></section>}
+
+        {(['fontSize', 'fontWeight', 'lineHeight'] as InspectorStyleProperty[]).some(isEditable) && <section className="inspector-section"><h3>Typography</h3><div className="inspector-fields">{renderStyleProperty('fontSize', 'Font Size')}{renderStyleProperty('fontWeight', 'Font Weight')}{renderStyleProperty('lineHeight', 'Line Height')}</div></section>}
+        {(['padding', 'margin', 'gap'] as InspectorStyleProperty[]).some(isEditable) && <section className="inspector-section"><h3>Spacing</h3><div className="inspector-fields">{renderStyleProperty('padding', 'Padding')}{renderStyleProperty('margin', 'Margin')}{renderStyleProperty('gap', 'Gap')}</div></section>}
+        {(['color', 'background', 'border', 'borderRadius', 'opacity'] as InspectorStyleProperty[]).some(isEditable) && <section className="inspector-section"><h3>Appearance</h3><div className="inspector-fields">{renderStyleProperty('color', 'Color')}{renderStyleProperty('background', 'Background')}{renderStyleProperty('border', 'Border')}{renderStyleProperty('borderRadius', 'Radius')}{renderStyleProperty('opacity', 'Opacity')}</div></section>}
+        <p className="selection-summary__hint">Values are preview-only and follow the Adapter editable list.</p>
       </div>
-      {selectedElement ? (
-        <div className="selection-summary" data-testid="selection-summary">
-          <div className="selection-summary__identity">
-            <span className="selection-summary__label">Selected instance</span>
-            <strong>{selectedElement.componentId}</strong>
-            <span data-testid="selected-instance-id">{selectedElement.elementId}</span>
-          </div>
-          <dl className="measurement-grid">
-            <div><dt>X</dt><dd data-testid="measurement-x">{Math.round(selectedElement.frame.x)}</dd></div>
-            <div><dt>Y</dt><dd data-testid="measurement-y">{Math.round(selectedElement.frame.y)}</dd></div>
-            <div><dt>W</dt><dd data-testid="measurement-width">{Math.round(selectedElement.frame.width)}</dd></div>
-            <div><dt>H</dt><dd data-testid="measurement-height">{Math.round(selectedElement.frame.height)}</dd></div>
-          </dl>
-          <p className="selection-summary__hint">Drag or resize the selected Adapter element in the preview.</p>
-        </div>
-      ) : (
-        <div className="panel-empty">
-          <span className="panel-empty__icon" aria-hidden="true">□</span>
-          <strong>Nothing selected</strong>
-          <span>Click an Adapter-exposed element in the preview.</span>
-        </div>
-      )}
     </aside>
   )
 }

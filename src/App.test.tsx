@@ -102,4 +102,39 @@ describe('editor shell', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('not a readable ZIP archive')
     expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled()
   })
+
+  it('renders only Adapter-editable Inspector fields and commits one history entry', () => {
+    const project = createBlankProject()
+    project.screens = [{ id: 'home', name: 'Home', route: '/home', states: [{ id: 'normal', name: 'Normal' }] }]
+    project.components = [{
+      id: 'Home.TaskRow', name: 'Task Row', type: 'row', selector: '[data-row]', instances: 'single',
+      editableProperties: ['width', 'background'],
+    }]
+    project.editor = { currentScreenId: 'home', currentStateId: 'normal' }
+    useEditorStore.getState().replaceProject(project)
+    useEditorStore.getState().setSelection({
+      elementId: 'task-bird',
+      componentId: 'Home.TaskRow',
+      frame: { x: 10, y: 20, width: 120, height: 64 },
+      editableProperties: ['width', 'background'],
+      styles: { padding: 0, margin: 0, gap: 0, fontSize: 16, fontWeight: 400, lineHeight: 19.2, color: '#000000', background: '#ffffff', border: 'none', borderRadius: 0, opacity: 1 },
+    })
+    render(<App />)
+
+    expect(screen.getByLabelText('W')).toBeEnabled()
+    expect(screen.getByLabelText('Background')).toBeEnabled()
+    expect(screen.queryByLabelText('X')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Font Size')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('W'), { target: { value: '180' } })
+    fireEvent.blur(screen.getByLabelText('W'))
+    expect(useEditorStore.getState().currentProject.changes).toHaveLength(1)
+    expect(useEditorStore.getState().currentProject.changes[0]).toMatchObject({ property: 'width', after: 180, valueType: 'visual' })
+    expect(useEditorStore.getState().past).toHaveLength(1)
+
+    useEditorStore.getState().undo()
+    expect(useEditorStore.getState().currentProject.changes).toHaveLength(0)
+    useEditorStore.getState().redo()
+    expect(useEditorStore.getState().currentProject.changes[0].after).toBe(180)
+  })
 })

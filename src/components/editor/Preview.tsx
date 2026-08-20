@@ -16,12 +16,16 @@ import {
   type VisualFrame,
 } from '../../features/visual-editing/model'
 import {
+  applyInspectorStyleOverrides,
   applyVisualFrame,
   captureBaseStyles,
   createDimensionChange,
   createPositionChange,
+  resolveInspectorStyles,
   resolveVisualFrame,
+  upsertChange,
 } from '../../features/visual-editing/changes'
+import { readComputedStyleSnapshot, readInlineStyleSnapshot } from '../../features/visual-editing/inspector'
 
 interface InteractionState {
   type: 'drag' | 'resize'
@@ -54,12 +58,15 @@ export function Preview() {
   const selectedElement = useEditorStore((state) => state.selectedElement)
   const setSelection = useEditorStore((state) => state.setSelection)
   const updateSelectionFrame = useEditorStore((state) => state.updateSelectionFrame)
+  const updateSelectionStyles = useEditorStore((state) => state.updateSelectionStyles)
   const setImportError = useEditorStore((state) => state.setImportError)
   const commitProject = useEditorStore((state) => state.commitProject)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const moveableRef = useRef<Moveable | null>(null)
   const targetsRef = useRef<EditableElementTarget[]>([])
   const baseFramesRef = useRef(new WeakMap<HTMLElement, VisualFrame>())
+  const baseInspectorStylesRef = useRef(new WeakMap<HTMLElement, ReturnType<typeof readComputedStyleSnapshot>>())
+  const baseInlineStylesRef = useRef(new WeakMap<HTMLElement, ReturnType<typeof readInlineStyleSnapshot>>())
   const interactionRef = useRef<InteractionState | undefined>(undefined)
   const resizeListenersRef = useRef(new Map<HTMLElement, (event: PointerEvent) => void>())
   const [iframeDocument, setIframeDocument] = useState<Document | null>(null)
@@ -93,6 +100,22 @@ export function Preview() {
       baseFramesRef.current.set(target.element, baseFrame)
       const frame = resolveVisualFrame(project, currentScreenId, currentStateId, target.instanceId, baseFrame)
       applyVisualFrame(target.element, baseFrame, frame)
+      const baseStyles = baseInspectorStylesRef.current.get(target.element) ?? readComputedStyleSnapshot(target.element)
+      const baseInlineStyles = baseInlineStylesRef.current.get(target.element) ?? readInlineStyleSnapshot(target.element)
+      baseInspectorStylesRef.current.set(target.element, baseStyles)
+      baseInlineStylesRef.current.set(target.element, baseInlineStyles)
+      const styles = applyInspectorStyleOverrides(
+        target.element,
+        baseInlineStyles,
+        project,
+        currentScreenId,
+        currentStateId,
+        target.instanceId,
+        baseStyles,
+      )
+      if (selectedElement?.elementId === target.instanceId && selectedElement.componentId === target.componentId) {
+        updateSelectionStyles(styles)
+      }
     }
     if (selectedElement) {
       const selected = nextTargets.find((target) => target.instanceId === selectedElement.elementId && target.componentId === selectedElement.componentId)
@@ -101,7 +124,7 @@ export function Preview() {
         updateSelectionFrame(resolveVisualFrame(project, currentScreenId, currentStateId, selected.instanceId, baseFrame))
       }
     }
-  }, [currentScreenId, currentStateId, project, selectedElement, updateSelectionFrame])
+  }, [currentScreenId, currentStateId, project, selectedElement, updateSelectionFrame, updateSelectionStyles])
 
   const handleIframeLoad = useCallback(() => {
     const document = iframeRef.current?.contentDocument
@@ -123,6 +146,8 @@ export function Preview() {
     const discovered = discoverEditableElements(document, project.components)
     targetsRef.current = discovered
     baseFramesRef.current = new WeakMap()
+    baseInspectorStylesRef.current = new WeakMap()
+    baseInlineStylesRef.current = new WeakMap()
     setTargets(discovered)
     setIframeDocument(document)
     setOverlayRoot(nextRoot)
@@ -136,11 +161,13 @@ export function Preview() {
       event.stopPropagation()
       const baseFrame = baseFramesRef.current.get(target.element) ?? getElementFrame(target.element)
       const frame = resolveVisualFrame(project, currentScreenId ?? '', currentStateId, target.instanceId, baseFrame)
+      const baseStyles = baseInspectorStylesRef.current.get(target.element) ?? readComputedStyleSnapshot(target.element)
       setSelection({
         elementId: target.instanceId,
         componentId: target.componentId,
         frame,
         editableProperties: target.editableProperties,
+        styles: resolveInspectorStyles(project, currentScreenId ?? '', currentStateId, target.instanceId, baseStyles),
       })
     }
     document.addEventListener('click', handleClick, true)
@@ -175,9 +202,9 @@ export function Preview() {
     const activeStateId = liveState.currentStateId
     if (!interaction || !activeScreenId || sameFrame(interaction.before, interaction.current)) return
 
-    const nextChanges = [...activeProject.changes]
+    let nextChanges = [...activeProject.changes]
     if (interaction.type === 'drag') {
-      nextChanges.push(createPositionChange(
+      nextChanges = upsertChange(nextChanges, createPositionChange(
         activeScreenId,
         activeStateId,
         interaction.target.instanceId,
@@ -188,7 +215,7 @@ export function Preview() {
     } else {
       if (canDragTarget(interaction.target)
         && (interaction.before.x !== interaction.current.x || interaction.before.y !== interaction.current.y)) {
-        nextChanges.push(createPositionChange(
+        nextChanges = upsertChange(nextChanges, createPositionChange(
           activeScreenId,
           activeStateId,
           interaction.target.instanceId,
@@ -198,7 +225,7 @@ export function Preview() {
         ))
       }
       if (canResizeWidth(interaction.target) && interaction.before.width !== interaction.current.width) {
-        nextChanges.push(createDimensionChange(
+        nextChanges = upsertChange(nextChanges, createDimensionChange(
           activeScreenId,
           activeStateId,
           interaction.target.instanceId,
@@ -209,7 +236,7 @@ export function Preview() {
         ))
       }
       if (canResizeHeight(interaction.target) && interaction.before.height !== interaction.current.height) {
-        nextChanges.push(createDimensionChange(
+        nextChanges = upsertChange(nextChanges, createDimensionChange(
           activeScreenId,
           activeStateId,
           interaction.target.instanceId,

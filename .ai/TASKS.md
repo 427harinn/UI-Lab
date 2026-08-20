@@ -242,6 +242,43 @@ feat/m3-visual-editing
 
 ---
 
+## Milestone 4 — Inspector
+
+Branch:
+
+```text
+feat/m4-inspector
+```
+
+### M4-01 Inspector property model
+
+- [x] Define supported properties and exact/visual value types.
+- [x] Parse computed style values into serializable snapshots.
+- [x] Validate numeric values and clamp opacity.
+
+### M4-02 Adapter-gated editing
+
+- [x] Render identity, screen/state, geometry, and editable property fields.
+- [x] Hide properties that are not Adapter-editable.
+- [x] Support position, size, spacing, typography, color/background, border/radius, and opacity.
+
+### M4-03 Preview and history
+
+- [x] Apply Inspector changes as preview-only inline style overrides.
+- [x] Reapply project changes after iframe reload and selection lifecycle changes.
+- [x] Commit on blur/Enter, not on every key.
+- [x] Integrate exact/visual changes with shared Undo/Redo history.
+- [x] Replace the latest same-scope property change for export-friendly final state resolution.
+
+### M4-04 Tests, documentation, and evidence
+
+- [x] Add model, parsing, validation, change resolution, and history tests.
+- [x] Add synthetic Adapter UI integration and Playwright E2E coverage.
+- [x] Capture Inspector overview, appearance, and geometry screenshots.
+- [x] Update README, architecture, milestone status, and task status.
+
+---
+
 ## Implementation rule
 
 After each small task:
