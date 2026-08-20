@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createBlankProject } from './blankProject'
 import { createEditorStore } from './store'
+import { serializeProjectPackage } from './package'
 
 function memoryStorage(): Storage {
   const values = new Map<string, string>()
@@ -83,5 +84,24 @@ describe('editor store', () => {
     expect(store.getState().currentProject.changes).toHaveLength(0)
     store.getState().redo()
     expect(store.getState().currentProject.changes).toHaveLength(2)
+  })
+
+  it('keeps the current project unchanged when a project import fails', async () => {
+    store.getState().updateProjectName('Open project')
+    const before = store.getState().currentProject
+
+    const imported = createBlankProject()
+    imported.name = 'Imported project'
+    const result = await store.getState().importProjectFile(await serializeProjectPackage(imported))
+
+    expect(result).toBe(true)
+    expect(store.getState().currentProject.name).toBe('Imported project')
+    expect(store.getState().past).toHaveLength(0)
+
+    const failed = await store.getState().importProjectFile(new Uint8Array([9, 8, 7]))
+    expect(failed).toBe(false)
+    expect(store.getState().currentProject.name).toBe('Imported project')
+    expect(store.getState().currentProject).not.toEqual(before)
+    expect(store.getState().importError).toContain('readable ZIP')
   })
 })

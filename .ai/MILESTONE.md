@@ -153,11 +153,27 @@ Implemented:
 
 ## Milestone 5 — Project Import / Export
 
-Status: TODO
+Status: COMPLETE
 
 Goal:
 
 Save and restore `.ui-project` editing sessions.
+
+Implemented:
+
+- Independent `.ui-project` formatVersion 1 ZIP package
+- Zod validation for project, Adapter metadata, viewport, screens/states/components/tokens, changes, and preview
+- Deterministic JSON serialization and safe project filenames
+- Explicit Import Mockup / Import Project / Export Project toolbar commands
+- Atomic Project Import with readable error categories and unchanged current preview on failure
+- Preview HTML restore, iframe recreation, viewport/editor restore, and project change reapplication
+- Migration entry point for future package versions
+- localStorage remains metadata-only; Project Import resets undo/redo history
+- Unit, integration, and Playwright evidence under `docs/screenshots/m5/`
+
+Excluded:
+
+- Codex Export, source rewriting, cloud storage, binary autosave, and collaboration
 
 ---
 

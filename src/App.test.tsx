@@ -4,6 +4,7 @@ import JSZip from 'jszip'
 import App from './App'
 import { createBlankProject } from './features/project/blankProject'
 import { useEditorStore } from './features/project/store'
+import { serializeProjectPackage } from './features/project/package'
 
 async function createMockupFile(name = 'synthetic.zip'): Promise<File> {
   const zip = new JSZip()
@@ -94,13 +95,40 @@ describe('editor shell', () => {
     expect(screen.queryByRole('button', { name: /^Overdue/ })).not.toBeInTheDocument()
   })
 
+  it('imports a project package after switching to blank state and restores preview metadata and changes', async () => {
+    render(<App />)
+    const mockupInput = screen.getByLabelText('Mockup ZIP file')
+    fireEvent.change(mockupInput, { target: { files: [await createMockupFile('house.zip')] } })
+    await screen.findByRole('button', { name: /^Home/ })
+
+    const current = useEditorStore.getState().currentProject
+    useEditorStore.getState().commitProject({
+      ...current,
+      changes: [{
+        id: 'restored-width', screenId: 'home', stateId: 'normal', elementId: 'task-bird', componentId: 'Home.TaskRow',
+        property: 'width', before: 120, after: 206, valueType: 'visual', updatedAt: '2026-08-20T00:00:00.000Z',
+      }],
+    })
+    const archive = await serializeProjectPackage(useEditorStore.getState().currentProject, useEditorStore.getState().importedMockup)
+    useEditorStore.getState().replaceProject(createBlankProject())
+
+    const projectInput = screen.getByLabelText('UI Lab project file')
+    fireEvent.change(projectInput, { target: { files: [new File([archive.buffer as ArrayBuffer], 'HouseToDo.ui-project', { type: 'application/zip' })] } })
+
+    expect(await screen.findByRole('button', { name: /^Home/ })).toBeInTheDocument()
+    expect(screen.getByTestId('viewport-frame')).toHaveStyle({ width: '430px', height: '932px' })
+    expect(useEditorStore.getState().currentProject.name).toBe('Synthetic mockup')
+    expect(useEditorStore.getState().currentProject.changes[0].after).toBe(206)
+    expect(screen.getByTitle('Synthetic mockup preview')).toBeInTheDocument()
+  })
+
   it('shows a readable error for an invalid import', async () => {
     render(<App />)
     const input = screen.getByLabelText('Mockup ZIP file')
     fireEvent.change(input, { target: { files: [new File(['not a zip'], 'broken.zip', { type: 'application/zip' })] } })
 
     expect(await screen.findByRole('alert')).toHaveTextContent('not a readable ZIP archive')
-    expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Import Mockup' })).toBeEnabled()
   })
 
   it('renders only Adapter-editable Inspector fields and commits one history entry', () => {

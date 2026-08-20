@@ -279,6 +279,43 @@ feat/m4-inspector
 
 ---
 
+## Milestone 5 — Project Import / Export
+
+Branch:
+
+```text
+feat/m5-project-import-export
+```
+
+### M5-01 Package format
+
+- [x] Define independent package formatVersion 1.
+- [x] Include project JSON, Adapter metadata, preview HTML, viewport, changes, and editor state.
+- [x] Exclude binary/transient iframe and history state.
+
+### M5-02 Export
+
+- [x] Add Export Project toolbar command.
+- [x] Use deterministic JSON ordering and safe filenames.
+- [x] Preserve imported preview HTML without requiring the original mockup ZIP.
+
+### M5-03 Import and validation
+
+- [x] Add Import Project toolbar command distinct from Import Mockup.
+- [x] Validate ZIP entries and all JSON documents with Zod.
+- [x] Add migration entry point before current-schema validation.
+- [x] Keep the open project unchanged after any import failure.
+- [x] Restore preview, viewport, screen/state, and changes atomically.
+
+### M5-04 Tests, documentation, and evidence
+
+- [x] Add package, round-trip, error, migration, and atomicity tests.
+- [x] Add Mockup → edit → Export → blank → Import integration coverage.
+- [x] Add Playwright E2E and three M5 screenshots.
+- [x] Update README, architecture, project format, milestone, and task docs.
+
+---
+
 ## Implementation rule
 
 After each small task:

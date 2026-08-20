@@ -5,6 +5,7 @@ import { importMockupZip } from '../mockup/importer'
 import type { SelectedElementSnapshot } from '../visual-editing/model'
 import type { InspectorStyleSnapshot } from '../visual-editing/inspector'
 import { loadPersistedProject, persistProject, type ProjectStorage } from './persistence'
+import { loadProjectPackage } from './package'
 
 export interface EditorStore {
   currentProject: UiLabProject
@@ -29,6 +30,7 @@ export interface EditorStore {
   updateSelectionFrame: (frame: SelectedElementSnapshot['frame']) => void
   updateSelectionStyles: (styles: InspectorStyleSnapshot) => void
   importMockupFile: (input: Blob | ArrayBuffer | Uint8Array) => Promise<boolean>
+  importProjectFile: (input: Blob | ArrayBuffer | Uint8Array) => Promise<boolean>
   setImportError: (message?: string) => void
   updateProjectName: (name: string) => void
   replaceProject: (project: UiLabProject) => void
@@ -180,6 +182,32 @@ function createStore(storage: ProjectStorage | undefined) {
           return true
         } catch (error) {
           const message = error instanceof Error ? error.message : 'The mockup could not be imported.'
+          set({ isImporting: false, importError: message })
+          return false
+        }
+      },
+      importProjectFile: async (input) => {
+        set({ isImporting: true, importError: undefined })
+        try {
+          // loadProjectPackage validates the entire archive before this single state
+          // transition, so a failed import cannot partially replace the open project.
+          const loaded = await loadProjectPackage(input)
+          const project = loaded.project
+          persistProject(project, storage)
+          set({
+            currentProject: project,
+            viewport: project.viewport,
+            currentScreenId: project.editor.currentScreenId,
+            currentStateId: project.editor.currentStateId,
+            ...clearSelection(),
+            importedMockup: loaded.importedMockup,
+            isImporting: false,
+            importError: undefined,
+            ...updateHistoryFlags([], []),
+          })
+          return true
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'The project could not be imported.'
           set({ isImporting: false, importError: message })
           return false
         }
