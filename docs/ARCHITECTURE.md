@@ -44,6 +44,16 @@ The editor captures each target's initial inline transform, width, and height in
 
 Completed operations append Adapter-scoped `UiChange` records: drag uses one `position` record, while resize uses at most one `position`, one `width`, and one `height` record. The store commits the entire operation once on pointer release, so pointer-move events do not create history entries. Undo/redo swaps the project snapshot and `Preview` re-applies the resolved changes to the current iframe target using its captured baseline frame.
 
+## Milestone 4 Inspector architecture
+
+`src/features/visual-editing/inspector.ts` owns the property model, validation, CSS parsing, and default classification. `position`, `width`, and `height` are `visual`; all supported style properties are `exact`. The Inspector renders fields only when the selected target's normalized Adapter `editableProperties` contains that property.
+
+On target discovery, `Preview` reads `getComputedStyle()` for spacing, typography, color, background, border, radius, and opacity. The serializable `InspectorStyleSnapshot` is stored on selection for display and change-before values. Original inline declarations and baselines stay in iframe-local `WeakMap`s and are never persisted.
+
+Inspector edits create the same `UiChange` records used by drag/resize, retaining both semantic `componentId` and instance `elementId`. Style edits apply to iframe inline styles only. The latest scoped change is resolved over the computed baseline and the original declaration is restored when an override is undone. Inputs commit on blur or Enter, so typing does not create per-key history entries; each committed field is one shared Undo/Redo transaction.
+
+Screen/state changes, imports, undo/redo, and iframe reload clear selection. The next iframe load rediscovers Adapter targets, recaptures baselines, and reapplies all project changes.
+
 ## Deliberate boundaries
 
-Adapter project files and iframe preview execution are implemented for Milestone 2. Milestone 3 adds element discovery, selection, visual manipulation, snapping, guides, measurements, and screenshot evidence. Source parsing, Inspector styling/property editing, export packaging, screenshot export, and backend services remain out of scope.
+Adapter project files and iframe preview execution are implemented for Milestone 2. Milestone 3 adds element discovery, selection, visual manipulation, snapping, guides, measurements, and screenshot evidence. Source parsing, export packaging, screenshot export, and backend services remain out of scope. Inspector changes are preview-only and never rewrite imported source files.

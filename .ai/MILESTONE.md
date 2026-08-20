@@ -128,11 +128,26 @@ Implemented:
 
 ## Milestone 4 — Inspector
 
-Status: TODO
+Status: COMPLETE
+
+Branch:
+
+```text
+feat/m4-inspector
+```
 
 Goal:
 
 Numerically edit adapter-allowed visual properties.
+
+Implemented:
+
+- Adapter-gated Inspector fields for geometry, spacing, typography, appearance, and opacity
+- Computed style snapshots with serializable values and iframe-local baseline declarations
+- Exact/visual property classification and shared `UiChange` records
+- Preview-only inline style overrides with project-change reapplication after reload
+- One history transaction per committed input on blur/Enter, with scoped latest-change replacement
+- Undo/Redo, lifecycle selection reset, validation, synthetic UI coverage, and M4 screenshots
 
 ---
 

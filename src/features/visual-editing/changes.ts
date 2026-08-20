@@ -1,4 +1,12 @@
 import type { UiChange, UiLabProject } from '../../schemas/project'
+import type { InspectorStyleProperty, InspectorStyleSnapshot, InlineStyleSnapshot } from './inspector'
+import {
+  clampOpacity,
+  cssPropertyName,
+  getInspectorPropertyValueType,
+  inspectorStyleProperties,
+  mergeInspectorStyles,
+} from './inspector'
 import type { VisualFrame } from './model'
 
 function isNumber(value: unknown): value is number {
@@ -19,8 +27,20 @@ function changesForElement(project: UiLabProject, screenId: string, stateId: str
     change.screenId === screenId
     && change.elementId === elementId
     && (change.stateId === undefined || change.stateId === stateId)
-    && ['position', 'width', 'height'].includes(change.property)
   ))
+}
+
+function sameScope(change: UiChange, next: UiChange): boolean {
+  return change.screenId === next.screenId
+    && change.stateId === next.stateId
+    && change.elementId === next.elementId
+    && change.property === next.property
+}
+
+export function upsertChange(changes: UiChange[], nextChange: UiChange): UiChange[] {
+  const index = changes.findIndex((change) => sameScope(change, nextChange))
+  if (index < 0) return [...changes, nextChange]
+  return changes.map((change, changeIndex) => changeIndex === index ? nextChange : change)
 }
 
 export function resolveVisualFrame(
@@ -83,6 +103,79 @@ export function createDimensionChange(
     valueType: 'visual',
     updatedAt: now,
   }
+}
+
+export function createStyleChange(
+  screenId: string,
+  stateId: string | undefined,
+  elementId: string,
+  componentId: string,
+  property: InspectorStyleProperty,
+  before: number | string,
+  after: number | string,
+  now = new Date().toISOString(),
+): UiChange {
+  return {
+    id: crypto.randomUUID(),
+    screenId,
+    stateId,
+    elementId,
+    componentId,
+    property,
+    before,
+    after: property === 'opacity' && typeof after === 'number' ? clampOpacity(after) : after,
+    valueType: getInspectorPropertyValueType(property),
+    updatedAt: now,
+  }
+}
+
+export function resolveInspectorStyles(
+  project: UiLabProject,
+  screenId: string,
+  stateId: string | undefined,
+  elementId: string,
+  baseStyles: InspectorStyleSnapshot,
+): InspectorStyleSnapshot {
+  return changesForElement(project, screenId, stateId, elementId)
+    .filter((change) => inspectorStyleProperties.includes(change.property as InspectorStyleProperty))
+    .reduce((styles, change) => mergeInspectorStyles(styles, change.property as InspectorStyleProperty, change.after), { ...baseStyles })
+}
+
+function styleChangeExists(project: UiLabProject, screenId: string, stateId: string | undefined, elementId: string, property: InspectorStyleProperty): boolean {
+  return project.changes.some((change) => (
+    change.screenId === screenId
+    && change.elementId === elementId
+    && change.property === property
+    && (change.stateId === undefined || change.stateId === stateId)
+  ))
+}
+
+export function applyInspectorStyleOverrides(
+  element: HTMLElement,
+  baseInlineStyles: InlineStyleSnapshot,
+  project: UiLabProject,
+  screenId: string,
+  stateId: string | undefined,
+  elementId: string,
+  baseStyles: InspectorStyleSnapshot,
+): InspectorStyleSnapshot {
+  const styles = resolveInspectorStyles(project, screenId, stateId, elementId, baseStyles)
+  for (const property of inspectorStyleProperties) {
+    const cssName = cssPropertyName(property)
+    if (styleChangeExists(project, screenId, stateId, elementId, property)) {
+      const value = styles[property]
+      const isUnitless = property === 'fontWeight' || property === 'opacity'
+      const cssValue = property === 'opacity'
+        ? String(clampOpacity(Number(value)))
+        : typeof value === 'number' && !isUnitless ? `${value}px` : String(value)
+      element.style.setProperty(cssName, cssValue)
+    } else if (baseInlineStyles[property]) {
+      element.style.setProperty(cssName, baseInlineStyles[property] ?? '')
+    } else {
+      element.style.removeProperty(cssName)
+    }
+  }
+  return styles
 }
 
 export function applyVisualFrame(
