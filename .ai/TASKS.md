@@ -174,14 +174,16 @@ feat/m2-mockup-import
 
 ### M2-17 Commit / Push / PR
 
-- [ ] Commit Milestone 2 changes.
-- [ ] Push `feat/m2-mockup-import`.
+- [x] Commit Milestone 2 changes.
+- [x] Push `feat/m2-mockup-import`.
 - [ ] Create Pull Request targeting `main`.
 - [ ] PR body includes summary.
 - [ ] PR body includes test results.
 - [ ] PR body includes known limitations.
 - [ ] PR explicitly confirms Milestone 3+ functionality is excluded.
 - [ ] Do not merge automatically.
+
+PR creation remains manual because the local GitHub CLI token is invalid. Use the branch PR link after pushing, target `main`, and include the required summary, Adapter support, tests, known limitations, and explicit exclusions sections.
 
 ---
 
