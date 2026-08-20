@@ -20,6 +20,39 @@ async function createAdapterZip(): Promise<Buffer> {
   return zip.generateAsync({ type: 'nodebuffer' })
 }
 
+async function createMultiScreenAdapterZip(): Promise<Buffer> {
+  const zip = new JSZip()
+  zip.file('.uilab/project.json', JSON.stringify({
+    formatVersion: 1, name: 'MultiScreen', entry: 'dist/index.html', defaultViewport: { width: 390, height: 844 },
+  }))
+  zip.file('.uilab/screens.json', JSON.stringify({
+    home: { name: 'Home', path: '/home', defaultState: 'normal' },
+    shopping: { name: 'Shopping', path: '/shopping', defaultState: 'normal' },
+  }))
+  zip.file('.uilab/components.json', JSON.stringify({
+    'Home.TaskRow': { selector: "[data-uilab-component='Home.TaskRow']", instances: 'single', editable: ['background'] },
+    'Shopping.TaskRow': { selector: "[data-uilab-component='Shopping.TaskRow']", instances: 'single', editable: ['background'] },
+  }))
+  zip.file('.uilab/tokens.json', JSON.stringify({ color: { home: '#FCFBF7', shopping: '#EFFCF5' } }))
+  zip.file('.uilab/states.json', JSON.stringify({ home: { normal: { name: 'Normal' } }, shopping: { normal: { name: 'Normal' } } }))
+  zip.file('dist/index.html', `<!doctype html><html><head><style>
+    * { box-sizing: border-box; } body { margin: 0; width: 390px; height: 844px; font-family: Arial, sans-serif; }
+    [data-uilab-component] { position: absolute; left: 40px; top: 120px; width: 220px; height: 80px; display: grid; place-items: center; border-radius: 12px; color: #163020; font-size: 18px; }
+    [data-uilab-component='Home.TaskRow'] { background: #FCFBF7; } [data-uilab-component='Shopping.TaskRow'] { background: #EFFCF5; }
+  </style></head><body><main id="app"></main><script>
+    function render() {
+      const path = location.hash.split('?')[0];
+      document.body.style.background = path.includes('/shopping') ? '#DFF7E8' : '#F3F0E8';
+      document.querySelector('#app').innerHTML = path.includes('/shopping')
+        ? '<div data-uilab-component="Shopping.TaskRow" data-uilab-id="shopping-task">Shopping screen</div>'
+        : '<div data-uilab-component="Home.TaskRow" data-uilab-id="home-task">Home screen</div>';
+    }
+    render();
+    addEventListener('hashchange', () => location.reload());
+  </script></body></html>`)
+  return zip.generateAsync({ type: 'nodebuffer' })
+}
+
 async function commitInput(page: import('@playwright/test').Page, label: string, value: string) {
   const input = page.getByLabel(label, { exact: true })
   await input.fill(value)
@@ -64,4 +97,30 @@ test('Milestone 6 creates and validates a Codex Export ZIP', async ({ page }) =>
   expect(archive.file('screenshots/home-normal.png')).not.toBeNull()
   expect((await archive.file('screenshots/home-normal.png')!.async('uint8array')).slice(0, 8)).toEqual(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
   await page.screenshot({ path: 'docs/screenshots/m6/03-export-ready.png', fullPage: true })
+})
+
+test('Milestone 6 waits for the screen route when screen state IDs are identical', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Mockup ZIP file').setInputFiles({ name: 'multi-screen.zip', mimeType: 'application/zip', buffer: await createMultiScreenAdapterZip() })
+
+  const frame = page.frameLocator('iframe[title="MultiScreen preview"]')
+  await expect(frame.locator('[data-uilab-id="home-task"]')).toBeVisible()
+  await frame.locator('[data-uilab-id="home-task"]').click()
+  await page.getByLabel('Background', { exact: true }).fill('#fff1cc')
+  await page.getByLabel('Background', { exact: true }).press('Enter')
+
+  await page.getByRole('button', { name: /^Shopping/ }).click()
+  await expect(frame.locator('[data-uilab-id="shopping-task"]')).toBeVisible()
+  await frame.locator('[data-uilab-id="shopping-task"]').click()
+  await page.getByLabel('Background', { exact: true }).fill('#d9f7e8')
+  await page.getByLabel('Background', { exact: true }).press('Enter')
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export for Codex' }).click()
+  const download = await downloadPromise
+  const path = await download.path()
+  const archive = await JSZip.loadAsync(await fs.readFile(path as string))
+  const homeScreenshot = await archive.file('screenshots/home-normal.png')!.async('uint8array')
+  const shoppingScreenshot = await archive.file('screenshots/shopping-normal.png')!.async('uint8array')
+  expect(Buffer.from(homeScreenshot).equals(Buffer.from(shoppingScreenshot))).toBe(false)
 })

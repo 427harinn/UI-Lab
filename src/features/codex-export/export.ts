@@ -45,7 +45,7 @@ function validateChangeTarget(project: UiLabProject, change: UiChange, stateId: 
   if (!change.componentId) throw new CodexExportError(`Cannot export change for instance “${change.elementId}”: componentId is missing.`)
   const component = componentFor(project, change.componentId)
   if (!component) throw new CodexExportError(`Cannot export change: component “${change.componentId}” no longer exists in the Adapter.`)
-  if (component.editableProperties.length > 0 && !component.editableProperties.includes(change.property)) {
+  if (!component.editableProperties.includes(change.property)) {
     throw new CodexExportError(`Cannot export change: property “${change.property}” is not editable on component “${change.componentId}”.`)
   }
   if (!change.elementId.trim()) throw new CodexExportError(`Cannot export change: instanceId is empty for component “${change.componentId}”.`)

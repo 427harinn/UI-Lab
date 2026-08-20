@@ -60,6 +60,14 @@ describe('Codex Export', () => {
     expect(() => resolveFinalCodexChanges(project)).toThrow(new RegExp(label))
   })
 
+  it('rejects a property when the Adapter component declares editable: []', () => {
+    const { project } = createFixture()
+    project.components[0].editableProperties = []
+    addChange(project, { elementId: 'task-a', property: 'width', after: 206, valueType: 'visual' })
+
+    expect(() => resolveFinalCodexChanges(project)).toThrow(/property “width” is not editable/)
+  })
+
   it('rejects empty changes and generates the required ZIP files', async () => {
     const { project, importedMockup } = createFixture()
     expect(() => resolveFinalCodexChanges(project)).toThrow('No UI changes to export.')

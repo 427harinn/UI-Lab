@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import Moveable, { type OnDrag, type OnDragStart, type OnResize, type OnResizeStart } from 'react-moveable'
 import { useEditorStore } from '../../features/project/store'
 import { buildPreviewRoute } from '../../features/mockup/route'
-import { getScreenPath } from '../../schemas/adapter'
+import { getScreenPath, type ImportedMockup } from '../../schemas/adapter'
 import { discoverEditableElements, findEditableTargetAtNode } from '../../features/visual-editing/discovery'
 import {
   canDragTarget,
@@ -55,6 +55,14 @@ function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 }
 
+function previewHashForScope(importedMockup: ImportedMockup, scope: PreviewCaptureScope): string {
+  const screen = importedMockup.screens.find((item) => item.id === scope.screenId)
+  if (!screen) throw new Error(`The Adapter screen “${scope.screenId}” is not available for screenshot capture.`)
+  const route = buildPreviewRoute(importedMockup.entry, getScreenPath(screen), scope.stateId)
+  const hashIndex = route.indexOf('#')
+  return hashIndex >= 0 ? route.slice(hashIndex) : ''
+}
+
 export function Preview() {
   const viewport = useEditorStore((state) => state.viewport)
   const project = useEditorStore((state) => state.currentProject)
@@ -89,10 +97,11 @@ export function Preview() {
       const screenshots: Record<string, Uint8Array> = {}
 
       const waitForScope = async (scope: PreviewCaptureScope) => {
+        const expectedHash = previewHashForScope(importedMockup, scope)
         for (let attempt = 0; attempt < 80; attempt += 1) {
           const frame = iframeRef.current
           const hash = frame?.contentWindow?.location.hash ?? ''
-          if (frame?.contentDocument?.readyState === 'complete' && hash.includes(`uilabState=${encodeURIComponent(scope.stateId)}`)) {
+          if (frame?.contentDocument?.readyState === 'complete' && hash === expectedHash) {
             await wait(40)
             for (const expected of scope.targets ?? []) {
               const found = targetsRef.current.some((target) => target.componentId === expected.componentId && target.instanceId === expected.instanceId)
