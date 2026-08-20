@@ -54,6 +54,31 @@ Inspector edits create the same `UiChange` records used by drag/resize, retainin
 
 Screen/state changes, imports, undo/redo, and iframe reload clear selection. The next iframe load rediscovers Adapter targets, recaptures baselines, and reapplies all project changes.
 
+## Milestone 5 project package architecture
+
+`src/features/project/package.ts` is the serialization boundary for `.ui-project`. The archive has a package-level `formatVersion` in `project.json`, independent of the nested UI Lab project format and Adapter v1 format. Required entries are `project.json`, the five `adapter/*.json` documents, and `preview/index.html`. JSON is canonicalized with stable object-key ordering and fixed ZIP entry dates where JSZip permits it, while preserving project array semantics.
+
+The package contains persistent state only: source metadata, viewport, normalized screens/states/components, tokens, changes, editor screen/state identity, Adapter metadata, and imported preview HTML. Transient selection snapshots, DOM nodes, iframe documents, WeakMaps, Moveable state, pointer interaction state, Blob URLs, and history stacks are excluded. Import clears selection and starts with empty `past`/`future` history.
+
+Project restore follows this boundary:
+
+```text
+loadProjectPackage()
+  -> detect package formatVersion
+  -> migrateProjectPackageDocument() [v1 -> v1 today]
+  -> validate project, Adapter entries, and preview
+  -> return a complete in-memory project + ImportedMockup
+  -> one atomic Zustand hydrate
+  -> iframe Blob URL + route restore
+  -> discover targets and reapply project changes
+```
+
+The loader is atomic at the store boundary: all asynchronous ZIP work happens before `currentProject`, `importedMockup`, viewport, or history are changed. Errors update only the readable toolbar error. The existing trusted local iframe security scope is retained; archived preview HTML is treated like imported mockup HTML and is not fetched remotely or executed in the parent.
+
+For mockup projects, Import also cross-validates the normalized project against Adapter metadata: source identity, screen IDs/names/routes/default states, state IDs/names, component IDs/selectors/instances/editable properties, and tokens must agree. The current editor viewport is intentionally not compared with Adapter `defaultViewport`, because a user may change the editor viewport preset while preserving the source's original default viewport metadata.
+
+localStorage remains a lightweight metadata convenience, not a binary project store. A reload may require selecting the `.ui-project` again, which is surfaced by the existing “Re-import required” state for mockup metadata without attempting to serialize preview HTML.
+
 ## Deliberate boundaries
 
-Adapter project files and iframe preview execution are implemented for Milestone 2. Milestone 3 adds element discovery, selection, visual manipulation, snapping, guides, measurements, and screenshot evidence. Source parsing, export packaging, screenshot export, and backend services remain out of scope. Inspector changes are preview-only and never rewrite imported source files.
+Adapter project files and iframe preview execution are implemented for Milestone 2. Milestone 3 adds element discovery, selection, visual manipulation, snapping, guides, measurements, and screenshot evidence. Codex Export, source parsing/rewriting, screenshot export packaging, and backend services remain out of scope. Inspector changes are preview-only and never rewrite imported source files.

@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { VIEWPORT_PRESETS } from './viewportPresets'
 import { useEditorStore } from '../../features/project/store'
+import { projectFilename, serializeProjectPackage } from '../../features/project/package'
 
 export function Toolbar() {
   const projectName = useEditorStore((state) => state.currentProject.name)
@@ -11,9 +12,14 @@ export function Toolbar() {
   const undo = useEditorStore((state) => state.undo)
   const redo = useEditorStore((state) => state.redo)
   const importMockupFile = useEditorStore((state) => state.importMockupFile)
+  const importProjectFile = useEditorStore((state) => state.importProjectFile)
+  const currentProject = useEditorStore((state) => state.currentProject)
+  const importedMockup = useEditorStore((state) => state.importedMockup)
+  const setImportError = useEditorStore((state) => state.setImportError)
   const isImporting = useEditorStore((state) => state.isImporting)
   const importError = useEditorStore((state) => state.importError)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const projectFileInputRef = useRef<HTMLInputElement>(null)
 
   const selectedPreset = VIEWPORT_PRESETS.find(
     (preset) => preset.width === viewport.width && preset.height === viewport.height,
@@ -58,11 +64,47 @@ export function Toolbar() {
               event.target.value = ''
             }}
           />
+          <input
+            ref={projectFileInputRef}
+            className="visually-hidden"
+            type="file"
+            accept=".ui-project,application/zip"
+            aria-label="UI Lab project file"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void importProjectFile(file)
+              event.target.value = ''
+            }}
+          />
           <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
-            {isImporting ? 'Importing…' : 'Import'}
+            {isImporting ? 'Importing…' : 'Import Mockup'}
           </button>
-          <span className="toolbar__trusted-note">Trusted local ZIP</span>
-          <button type="button" disabled title="Available in a later milestone">Project Export</button>
+          <button type="button" onClick={() => projectFileInputRef.current?.click()} disabled={isImporting}>Import Project</button>
+          <span className="toolbar__trusted-note">Trusted local files</span>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const bytes = await serializeProjectPackage(currentProject, importedMockup)
+                const blobBytes = new Uint8Array(bytes.byteLength)
+                blobBytes.set(bytes)
+                const url = URL.createObjectURL(new Blob([blobBytes.buffer], { type: 'application/zip' }))
+                const anchor = document.createElement('a')
+                anchor.href = url
+                anchor.download = projectFilename(currentProject.name)
+                document.body.appendChild(anchor)
+                anchor.click()
+                anchor.remove()
+                URL.revokeObjectURL(url)
+                setImportError(undefined)
+              } catch (error) {
+                setImportError(error instanceof Error ? error.message : 'The project could not be exported.')
+              }
+            }}
+            disabled={isImporting}
+          >
+            Export Project
+          </button>
           <button type="button" disabled title="Available in a later milestone">Codex Export</button>
         </div>
       </div>
