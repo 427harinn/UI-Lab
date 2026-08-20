@@ -223,9 +223,9 @@ feat/m6-codex-export
 
 ### M6-05 Delivery
 
-- [ ] Commit changes.
-- [ ] Push `feat/m6-codex-export`.
-- [ ] Create one non-draft PR targeting `main` without auto-merge.
+- [x] Commit changes.
+- [x] Push `feat/m6-codex-export`.
+- [x] Create one PR targeting `main` without auto-merge. PR #5 is intentionally left open as draft for review.
 
 ---
 
