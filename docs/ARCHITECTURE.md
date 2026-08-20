@@ -111,3 +111,38 @@ Adapter project files, iframe preview execution, visual editing, Inspector
 changes, and Codex Export are local-only features. Source parsing/rewriting,
 production application changes, package installation, remote upload, backend
 services, and automatic PR work remain out of scope.
+
+## Milestone 7 quality boundaries
+
+Keyboard handling is isolated in `src/features/editor/shortcuts.ts`. The shell
+and each trusted same-origin Preview iframe register the same Undo, Redo, and
+Escape handler. The Preview registers it on both its document and window during
+iframe load and removes both listeners on reload/unmount; an already-consumed
+event cannot run the action twice. The handler ignores input, textarea, select,
+and contenteditable targets across iframe realms. Delete and Backspace have no
+editor command. Inspector inputs own Enter/blur commit and Escape draft cancel,
+so browser-native text undo is never combined with project history.
+
+Import replacement is guarded at the Toolbar boundary when
+`project.changes.length > 0`. The small application dialog has a heading,
+`role="dialog"`, `aria-modal`, initial Cancel focus, a Continue action, Escape
+close, and a minimal focus trap. Import validation remains atomic in the store;
+Cancel does not call an import method.
+
+The store exposes a short-lived status area separate from technical import
+details. Success messages cover Mockup Import, Project Import, Project Export,
+and Codex Export. Errors are categorized for users while the existing readable
+validation message remains available as non-trace detail. Busy state disables
+all import/export/history actions and prevents repeated Codex archive creation.
+
+Preview owns the trusted same-origin iframe Blob URL and revokes it when the
+source changes or the component unmounts. Toolbar download URLs are revoked in
+`finally` blocks. Iframe click listeners and resize listeners are cleaned up;
+DOM nodes and Blob URLs never enter project state.
+
+The shell includes a `prefers-reduced-motion: reduce` rule for transitions,
+animations, and scrolling. Moveable's iframe-local interaction is intentionally
+left unchanged. Storybook stories live in `src/components/editor/` and isolate
+the shell, Toolbar, empty/selected Inspector, status feedback, and guard dialog.
+Playwright snapshots in `e2e/m7.quality.pw.ts-snapshots/` are regression
+baselines; `docs/screenshots/m7/` is PR evidence and is not used as a baseline.

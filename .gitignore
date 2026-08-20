@@ -3,4 +3,5 @@ dist/
 coverage/
 test-results/
 playwright-report/
+storybook-static/
 .DS_Store

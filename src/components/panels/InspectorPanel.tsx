@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { EditableProperty } from '../../schemas/adapter'
 import { useEditorStore } from '../../features/project/store'
 import {
@@ -27,15 +27,25 @@ interface InspectorInputProps {
   type?: 'number' | 'text'
   min?: number
   max?: number
-  step?: number
-  onCommit: (value: string) => void
+  step?: number | 'any'
+  onCommit: (value: string) => boolean | void
 }
 
 function InspectorInput({ label, value, disabled, type = 'text', min, max, step, onCommit }: InspectorInputProps) {
   const [draft, setDraft] = useState(displayValue(value))
+  const [invalid, setInvalid] = useState(false)
+  const cancelRef = useRef(false)
+
+  const commit = () => {
+    if (cancelRef.current) {
+      cancelRef.current = false
+      return
+    }
+    setInvalid(onCommit(draft) === false)
+  }
 
   return (
-    <label className="inspector-field">
+    <label className={`inspector-field${invalid ? ' inspector-field--invalid' : ''}`}>
       <span>{label}</span>
       <input
         aria-label={label}
@@ -45,17 +55,33 @@ function InspectorInput({ label, value, disabled, type = 'text', min, max, step,
         max={max}
         step={step}
         disabled={disabled}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => onCommit(draft)}
+        aria-invalid={invalid}
+        onChange={(event) => { cancelRef.current = false; setDraft(event.target.value); setInvalid(false) }}
+        onBlur={commit}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             event.preventDefault()
             event.currentTarget.blur()
+          } else if (event.key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+            cancelRef.current = true
+            setDraft(displayValue(value))
+            setInvalid(false)
+            event.currentTarget.blur()
           }
         }}
       />
+      {invalid && <span className="inspector-field__error" role="alert">Invalid value</span>}
     </label>
   )
+}
+
+function inspectorStep(property: EditableProperty): number | 'any' | undefined {
+  if (property === 'opacity') return 0.05
+  if (property === 'fontWeight') return 100
+  if (property === 'position' || property === 'width' || property === 'height' || property === 'fontSize' || property === 'lineHeight' || property === 'borderRadius') return 'any'
+  return undefined
 }
 
 function PropertyInput({
@@ -69,7 +95,7 @@ function PropertyInput({
   label: string
   value: InspectorValue
   disabled: boolean
-  onCommit: (property: EditableProperty, raw: string) => void
+  onCommit: (property: EditableProperty, raw: string) => boolean | void
 }) {
   const isOpacity = property === 'opacity'
   const isNumber = typeof value === 'number'
@@ -83,7 +109,7 @@ function PropertyInput({
         type={isNumber ? 'number' : 'text'}
         min={isOpacity ? 0 : undefined}
         max={isOpacity ? 1 : undefined}
-        step={isOpacity ? 0.05 : undefined}
+        step={inspectorStep(property)}
         onCommit={(raw) => onCommit(property, raw)}
       />
       {property === 'color' && !disabled && (
@@ -119,8 +145,8 @@ export function InspectorPanel() {
   const styles = selectedElement.styles ?? defaultInspectorStyles
   const isEditable = (property: EditableProperty) => selectedElement.editableProperties.includes(property)
 
-  const commitValue = (property: EditableProperty, raw: string) => {
-    if (!isEditable(property) || !currentScreenId) return
+  const commitValue = (property: EditableProperty, raw: string): boolean => {
+    if (!isEditable(property) || !currentScreenId) return false
     const componentId = selectedElement.componentId
     const elementId = selectedElement.elementId
     const currentFrame = selectedElement.frame
@@ -128,39 +154,45 @@ export function InspectorPanel() {
     let nextFrame = currentFrame
     let nextStyles = styles
 
-    if (property === 'position') return
+    if (property === 'position') return false
     if (property === 'width' || property === 'height') {
       const value = parseInspectorNumber(property, raw)
-      if (value === undefined || currentFrame[property] === value) return
+      if (value === undefined) return false
+      if (currentFrame[property] === value) return true
       nextFrame = { ...currentFrame, [property]: value }
       change = createDimensionChange(currentScreenId, currentStateId, elementId, componentId, property, currentFrame[property], value)
     } else if (isStyleProperty(property)) {
       const currentValue = styles[property]
       if (typeof currentValue === 'number') {
         const value = parseInspectorNumber(property, raw)
-        if (value === undefined || currentValue === value) return
+        if (value === undefined) return false
+        if (currentValue === value) return true
         change = createStyleChange(currentScreenId, currentStateId, elementId, componentId, property, currentValue, value)
         nextStyles = { ...styles, [property]: value }
       } else {
-        if (!isSafeCssValue(property, raw) || currentValue === raw) return
+        if (!isSafeCssValue(property, raw)) return false
+        if (currentValue === raw) return true
         change = createStyleChange(currentScreenId, currentStateId, elementId, componentId, property, currentValue, raw)
         nextStyles = { ...styles, [property]: raw }
       }
     }
-    if (!change) return
+    if (!change) return false
     commitProject({ ...project, changes: upsertChange(project.changes, change) })
     if (property === 'width' || property === 'height') updateSelectionFrame(nextFrame)
     if (isStyleProperty(property)) updateSelectionStyles(nextStyles)
+    return true
   }
 
-  const commitPosition = (axis: 'x' | 'y', raw: string) => {
-    if (!isEditable('position') || !currentScreenId) return
+  const commitPosition = (axis: 'x' | 'y', raw: string): boolean => {
+    if (!isEditable('position') || !currentScreenId) return false
     const value = parseInspectorNumber('position', raw)
-    if (value === undefined || selectedElement.frame[axis] === value) return
+    if (value === undefined) return false
+    if (selectedElement.frame[axis] === value) return true
     const after = { ...selectedElement.frame, [axis]: value }
     const change = createPositionChange(currentScreenId, currentStateId, selectedElement.elementId, selectedElement.componentId, selectedElement.frame, after)
     commitProject({ ...project, changes: upsertChange(project.changes, change) })
     updateSelectionFrame({ ...selectedElement.frame, [axis]: value })
+    return true
   }
 
   const renderStyleProperty = (property: InspectorStyleProperty, label: string) => (
@@ -186,8 +218,8 @@ export function InspectorPanel() {
         </dl>
 
         {isEditable('position') && <section className="inspector-section"><h3>Position</h3><div className="inspector-fields">
-          <InspectorInput key={`x-${selectedElement.frame.x}`} label="X" value={selectedElement.frame.x} type="number" onCommit={(raw) => commitPosition('x', raw)} />
-          <InspectorInput key={`y-${selectedElement.frame.y}`} label="Y" value={selectedElement.frame.y} type="number" onCommit={(raw) => commitPosition('y', raw)} />
+          <InspectorInput key={`x-${selectedElement.frame.x}`} label="X" value={selectedElement.frame.x} type="number" step="any" onCommit={(raw) => commitPosition('x', raw)} />
+          <InspectorInput key={`y-${selectedElement.frame.y}`} label="Y" value={selectedElement.frame.y} type="number" step="any" onCommit={(raw) => commitPosition('y', raw)} />
         </div></section>}
 
         {(isEditable('width') || isEditable('height')) && <section className="inspector-section"><h3>Size</h3><div className="inspector-fields">

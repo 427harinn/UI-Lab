@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import JSZip from 'jszip'
 import App from './App'
 import { createBlankProject } from './features/project/blankProject'
@@ -129,6 +129,69 @@ describe('editor shell', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('not a readable ZIP archive')
     expect(screen.getByRole('button', { name: 'Import Mockup' })).toBeEnabled()
+  })
+
+  it('revokes the temporary download Blob URL after Project Export', async () => {
+    const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:project-export')
+    const revokeUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Export Project' }))
+    await waitFor(() => expect(screen.getByText('Project exported')).toBeInTheDocument())
+    expect(createUrl).toHaveBeenCalled()
+    expect(revokeUrl).toHaveBeenCalledWith('blob:project-export')
+    createUrl.mockRestore()
+    revokeUrl.mockRestore()
+  })
+
+  it('clears selection with Escape and keeps Delete/Backspace non-destructive', () => {
+    useEditorStore.getState().setSelection({ elementId: 'task-bird', componentId: 'Home.TaskRow', frame: { x: 10, y: 20, width: 120, height: 64 }, editableProperties: ['width'] })
+    render(<App />)
+    expect(screen.getByTestId('selection-summary')).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'Delete' })
+    expect(useEditorStore.getState().selectedElement).toBeDefined()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(useEditorStore.getState().selectedElement).toBeUndefined()
+  })
+
+  it('supports guarded project replacement and preserves the current project on cancel', () => {
+    const project = createBlankProject()
+    useEditorStore.getState().commitProject({ ...project, changes: [{ id: 'change-guard', screenId: 'home', stateId: 'normal', elementId: 'item', componentId: 'component', property: 'width', before: 10, after: 20, valueType: 'visual', updatedAt: '2026-01-01T00:00:00.000Z' }] })
+    const before = useEditorStore.getState().currentProject
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Import Mockup' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('Current edits will be replaced')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(useEditorStore.getState().currentProject).toEqual(before)
+  })
+
+  it('shows invalid Inspector feedback, cancels drafts with Escape, and handles undo in the shell', () => {
+    const project = createBlankProject()
+    project.screens = [{ id: 'home', name: 'Home', route: '/home', states: [{ id: 'normal', name: 'Normal' }] }]
+    project.components = [{ id: 'Home.TaskRow', name: 'Task Row', type: 'row', selector: '[data-row]', instances: 'single', editableProperties: ['width'] }]
+    project.editor = { currentScreenId: 'home', currentStateId: 'normal' }
+    useEditorStore.getState().replaceProject(project)
+    useEditorStore.getState().setSelection({ elementId: 'task-bird', componentId: 'Home.TaskRow', frame: { x: 10, y: 20, width: 120, height: 64 }, editableProperties: ['width'] })
+    render(<App />)
+    const width = screen.getByLabelText('W')
+    fireEvent.change(width, { target: { value: '-1' } })
+    fireEvent.blur(width)
+    expect(screen.getByText('Invalid value')).toBeInTheDocument()
+    expect(useEditorStore.getState().currentProject.changes).toHaveLength(0)
+    fireEvent.focus(width)
+    fireEvent.change(width, { target: { value: '180' } })
+    fireEvent.keyDown(width, { key: 'Escape' })
+    expect(width).toHaveValue(120)
+    expect(useEditorStore.getState().currentProject.changes).toHaveLength(0)
+    fireEvent.focus(width)
+    fireEvent.change(width, { target: { value: '180' } })
+    fireEvent.keyDown(width, { key: 'Enter' })
+    fireEvent.blur(width)
+    expect(useEditorStore.getState().currentProject.changes).toHaveLength(1)
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true })
+    expect(useEditorStore.getState().currentProject.changes).toHaveLength(0)
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true, shiftKey: true })
+    expect(useEditorStore.getState().currentProject.changes).toHaveLength(1)
   })
 
   it('renders only Adapter-editable Inspector fields and commits one history entry', () => {
