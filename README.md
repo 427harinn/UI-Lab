@@ -1,6 +1,6 @@
 # UI Lab
 
-UI Lab is a browser-based visual UI editor. Milestone 2 adds trusted Adapter v1 mockup ZIP import, validated screen/state metadata, and an isolated iframe preview on top of the Milestone 1 foundation.
+UI Lab is a browser-based visual UI editor. Milestone 3 adds Adapter v1 instance selection and temporary visual move/resize editing on top of the trusted iframe preview introduced in Milestone 2.
 
 ## Development
 
@@ -36,6 +36,8 @@ Imports are trusted local content. Remote URLs, backend execution, and arbitrary
 
 The authoritative Adapter v1 contract is [UI_LAB_ADAPTER_SPEC_v1.md](UI_LAB_ADAPTER_SPEC_v1.md). The implementation keeps adapter-specific validation isolated in `src/schemas/adapter.ts` and normalizes the external object documents into the internal editor model only after validation.
 
-Milestone 2 intentionally contains no visual element selection, drag, resize, snapping, guides, Inspector editing, project ZIP export, screenshot export, or Codex Export.
+Milestone 3 supports selecting Adapter-exposed instances, dragging elements whose Adapter allows `position`, resizing elements whose Adapter allows `width` and/or `height`, snapping to viewport/element guides, and reviewing X/Y/W/H in the Inspector placeholder. Changes are preview-only and are committed to the existing undo/redo history when an interaction completes.
+
+Moveable controls render inside the imported iframe document so all measurements use the preview content area's `(0, 0)` origin. Selection is reset when screen/state/import/iframe lifecycle changes. Styling Inspector editing, Project/Codex Export, source rewriting, and screenshot export remain future milestones.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md), and [.ai/MILESTONE.md](.ai/MILESTONE.md) for implementation details and status.

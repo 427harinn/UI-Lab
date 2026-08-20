@@ -89,7 +89,13 @@ See `UI_LAB_MILESTONE2_SPEC.md`.
 
 ## Milestone 3 — Visual Editing
 
-Status: TODO
+Status: COMPLETE
+
+Branch:
+
+```text
+feat/m3-visual-editing
+```
 
 Goal:
 
@@ -105,6 +111,18 @@ Planned:
 - snap
 - guides
 - measurements
+
+Implemented:
+
+- Adapter selector-based editable element discovery
+- semantic component / rendered instance selection
+- iframe-local Moveable overlay and control box
+- Adapter-gated drag and resize with live measurements
+- viewport, horizontal, vertical, and editable-element snapping guides
+- temporary visual transforms and dimensions
+- one history commit per completed drag or resize
+- selection reset and iframe target re-resolution lifecycle
+- unit and Playwright integration coverage
 
 ---
 

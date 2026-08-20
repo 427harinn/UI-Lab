@@ -61,4 +61,27 @@ describe('editor store', () => {
     expect(store.getState().currentProject).toEqual(project)
     expect(store.getState().canUndo).toBe(false)
   })
+
+  it('keeps a visual edit with multiple property changes as one history entry', () => {
+    const project = store.getState().currentProject
+    store.getState().commitProject({
+      ...project,
+      changes: [
+        {
+          id: 'drag', screenId: 'home', stateId: 'normal', elementId: 'task-bird', componentId: 'Home.TaskRow',
+          property: 'position', before: { x: 0, y: 0 }, after: { x: 20, y: 30 }, valueType: 'visual', updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'resize-width', screenId: 'home', stateId: 'normal', elementId: 'task-bird', componentId: 'Home.TaskRow',
+          property: 'width', before: 120, after: 160, valueType: 'visual', updatedAt: new Date().toISOString(),
+        },
+      ],
+    })
+
+    expect(store.getState().past).toHaveLength(1)
+    store.getState().undo()
+    expect(store.getState().currentProject.changes).toHaveLength(0)
+    store.getState().redo()
+    expect(store.getState().currentProject.changes).toHaveLength(2)
+  })
 })
