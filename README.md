@@ -34,7 +34,7 @@ The preferred preview is a self-contained `project.entry` HTML file, commonly `d
 
 Imports are trusted local content. Remote URLs, backend execution, and arbitrary package installation are not supported.
 
-The authoritative `UI_LAB_ADAPTER_SPEC_v1.md` is an external contract and is not included in this checkout. The implementation follows the Adapter v1 contract restated in [docs/UI_LAB_MILESTONE2_SPEC.md](docs/UI_LAB_MILESTONE2_SPEC.md) and keeps adapter-specific validation isolated in `src/schemas/adapter.ts`.
+The authoritative Adapter v1 contract is [UI_LAB_ADAPTER_SPEC_v1.md](UI_LAB_ADAPTER_SPEC_v1.md). The implementation keeps adapter-specific validation isolated in `src/schemas/adapter.ts` and normalizes the external object documents into the internal editor model only after validation.
 
 Milestone 2 intentionally contains no visual element selection, drag, resize, snapping, guides, Inspector editing, project ZIP export, screenshot export, or Codex Export.
 

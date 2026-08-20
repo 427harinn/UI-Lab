@@ -21,6 +21,8 @@ export const componentDefinitionSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   type: z.string().min(1),
+  selector: z.string().min(1).optional(),
+  instances: z.enum(['single', 'multiple']).optional(),
   editableProperties: z.array(z.string()).default([]),
 })
 

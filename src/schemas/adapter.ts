@@ -30,53 +30,45 @@ export const adapterProjectSchema = z.object({
   }).strict(),
 }).strict()
 
-const adapterScreenInputSchema = z.object({
-  id: z.string().min(1),
+const adapterScreenDefinitionSchema = z.object({
   name: z.string().min(1),
-  path: z.string().min(1).optional(),
-  route: z.string().min(1).optional(),
+  path: z.string().min(1),
   defaultState: z.string().min(1),
-}).strict().refine((screen) => Boolean(screen.path ?? screen.route), {
-  message: 'screen must define path or route',
-  path: ['path'],
-})
-
-export const adapterScreensSchema = z.object({
-  screens: z.array(adapterScreenInputSchema).min(1),
 }).strict()
+
+export const adapterScreensSchema = z.record(z.string().min(1), adapterScreenDefinitionSchema).refine(
+  (screens) => Object.keys(screens).length > 0,
+  { message: 'screens.json must declare at least one screen' },
+)
 
 export const adapterComponentSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  type: z.string().min(1),
+  selector: z.string().min(1),
   instances: z.enum(['single', 'multiple']),
-  editableProperties: z.array(editablePropertySchema),
+  editable: z.array(editablePropertySchema),
 }).strict()
 
-export const adapterComponentsSchema = z.object({
-  components: z.array(adapterComponentSchema),
-}).strict()
+export const adapterComponentsSchema = z.record(z.string().min(1), adapterComponentSchema)
 
 export const adapterStateSchema = z.object({
-  id: z.string().min(1),
   name: z.string().min(1),
-  screenId: z.string().min(1),
 }).strict()
 
-export const adapterStatesSchema = z.object({
-  states: z.array(adapterStateSchema),
-}).strict()
+export const adapterStatesSchema = z.record(
+  z.string().min(1),
+  z.record(z.string().min(1), adapterStateSchema),
+)
 
-export const adapterTokensSchema = z.object({
-  tokens: z.record(z.string(), z.unknown()),
-}).strict()
+export const adapterTokensSchema = z.record(z.string(), z.unknown())
 
 export type EditableProperty = z.infer<typeof editablePropertySchema>
 export type AdapterProject = z.infer<typeof adapterProjectSchema>
-export type AdapterScreen = z.infer<typeof adapterScreenInputSchema>
-export type AdapterComponent = z.infer<typeof adapterComponentSchema>
-export type AdapterState = z.infer<typeof adapterStateSchema>
-export type AdapterTokens = z.infer<typeof adapterTokensSchema>['tokens']
+export type AdapterScreenDocument = z.infer<typeof adapterScreensSchema>
+export type AdapterComponentDocument = z.infer<typeof adapterComponentsSchema>
+export type AdapterStateDocument = z.infer<typeof adapterStatesSchema>
+export type AdapterScreen = { id: string } & z.infer<typeof adapterScreenDefinitionSchema>
+export type AdapterComponent = { id: string } & z.infer<typeof adapterComponentSchema>
+export type AdapterState = { id: string; screenId: string } & z.infer<typeof adapterStateSchema>
+export type AdapterTokens = z.infer<typeof adapterTokensSchema>
 
 export interface ImportedMockup {
   name: string
@@ -91,7 +83,7 @@ export interface ImportedMockup {
 }
 
 export function getScreenPath(screen: AdapterScreen): string {
-  return screen.path ?? screen.route ?? '/'
+  return screen.path
 }
 
 export function getStatesForScreen(states: AdapterState[], screenId: string): AdapterState[] {

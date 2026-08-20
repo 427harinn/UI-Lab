@@ -42,7 +42,7 @@ export function LeftPanel() {
                   onClick={() => setCurrentScreenId(screen.id)}
                 >
                   <span>{screen.name}</span>
-                  <span className="navigator-item__meta">{importedMockup ? ('path' in screen ? screen.path ?? screen.route : screen.route) : screen.route}</span>
+                  <span className="navigator-item__meta">{'path' in screen ? screen.path : screen.route}</span>
                 </button>
               ))}
             </div>

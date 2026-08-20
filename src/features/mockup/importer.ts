@@ -5,6 +5,9 @@ import {
   adapterScreensSchema,
   adapterStatesSchema,
   adapterTokensSchema,
+  type AdapterComponentDocument,
+  type AdapterScreenDocument,
+  type AdapterStateDocument,
   type ImportedMockup,
 } from '../../schemas/adapter'
 
@@ -56,6 +59,18 @@ async function readJson(zip: JSZip, path: string): Promise<unknown> {
 
 function schemaError(path: string): MockupImportError {
   return new MockupImportError('invalid-schema', `The adapter file “${path}” does not match Adapter v1.`)
+}
+
+function normalizeScreens(document: AdapterScreenDocument) {
+  return Object.entries(document).map(([id, screen]) => ({ id, ...screen }))
+}
+
+function normalizeComponents(document: AdapterComponentDocument) {
+  return Object.entries(document).map(([id, component]) => ({ id, ...component }))
+}
+
+function normalizeStates(document: AdapterStateDocument) {
+  return Object.entries(document).flatMap(([screenId, states]) => Object.entries(states).map(([id, state]) => ({ id, screenId, ...state })))
 }
 
 export async function importMockupZip(input: Blob | ArrayBuffer | Uint8Array): Promise<ImportedMockup> {
@@ -111,10 +126,10 @@ export async function importMockupZip(input: Blob | ArrayBuffer | Uint8Array): P
     formatVersion: 1,
     entry: projectResult.data.entry,
     defaultViewport: projectResult.data.defaultViewport,
-    screens: screensResult.data.screens,
-    components: componentsResult.data.components,
-    tokens: tokensResult.data.tokens,
-    states: statesResult.data.states,
+    screens: normalizeScreens(screensResult.data),
+    components: normalizeComponents(componentsResult.data),
+    tokens: tokensResult.data,
+    states: normalizeStates(statesResult.data),
     previewHtml,
   }
 }

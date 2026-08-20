@@ -13,19 +13,18 @@ async function createMockupFile(name = 'synthetic.zip'): Promise<File> {
     entry: 'dist/index.html',
     defaultViewport: { width: 430, height: 932 },
   }))
-  zip.file('.uilab/screens.json', JSON.stringify({ screens: [
-    { id: 'home', name: 'Home', path: '/home', defaultState: 'normal' },
-    { id: 'shopping', name: 'Shopping', path: '/shopping', defaultState: 'empty' },
-  ] }))
-  zip.file('.uilab/components.json', JSON.stringify({ components: [
-    { id: 'card', name: 'Card', type: 'Card', instances: 'single', editableProperties: ['width'] },
-  ] }))
-  zip.file('.uilab/tokens.json', JSON.stringify({ tokens: { accent: '#f00' } }))
-  zip.file('.uilab/states.json', JSON.stringify({ states: [
-    { id: 'normal', name: 'Normal', screenId: 'home' },
-    { id: 'overdue', name: 'Overdue', screenId: 'home' },
-    { id: 'empty', name: 'Empty', screenId: 'shopping' },
-  ] }))
+  zip.file('.uilab/screens.json', JSON.stringify({
+    home: { name: 'Home', path: '/home', defaultState: 'normal' },
+    shopping: { name: 'Shopping', path: '/shopping', defaultState: 'empty' },
+  }))
+  zip.file('.uilab/components.json', JSON.stringify({
+    'Home.TaskRow': { selector: "[data-uilab-component='Home.TaskRow']", instances: 'single', editable: ['width'] },
+  }))
+  zip.file('.uilab/tokens.json', JSON.stringify({ accent: '#f00' }))
+  zip.file('.uilab/states.json', JSON.stringify({
+    home: { normal: { name: 'Normal' }, overdue: { name: 'Overdue' } },
+    shopping: { empty: { name: 'Empty' } },
+  }))
   zip.file('dist/index.html', '<!doctype html><html><body><main>Preview</main></body></html>')
   const bytes = await zip.generateAsync({ type: 'uint8array' })
   return new File([bytes.buffer as ArrayBuffer], name, { type: 'application/zip' })
@@ -71,6 +70,10 @@ describe('editor shell', () => {
     expect(useEditorStore.getState().currentStateId).toBe('normal')
     expect(useEditorStore.getState().currentProject.components).toHaveLength(1)
     expect(useEditorStore.getState().currentProject.tokens).toEqual({ accent: '#f00' })
+    expect(useEditorStore.getState().currentProject.components[0]).toMatchObject({
+      selector: "[data-uilab-component='Home.TaskRow']",
+      editableProperties: ['width'],
+    })
   })
 
   it('switches screen to its default state and switches declared states', async () => {

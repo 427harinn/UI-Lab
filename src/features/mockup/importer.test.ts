@@ -9,19 +9,15 @@ const files = {
     entry: 'dist/index.html',
     defaultViewport: { width: 375, height: 812 },
   },
-  '.uilab/screens.json': {
-    screens: [{ id: 'home', name: 'Home', path: '/home', defaultState: 'normal' }],
-  },
+  '.uilab/screens.json': { home: { name: 'Home', path: '/home', defaultState: 'normal' } },
   '.uilab/components.json': {
-    components: [{ id: 'card', name: 'Card', type: 'Card', instances: 'multiple', editableProperties: ['width'] }],
+    'Home.TaskRow': { selector: "[data-uilab-component='Home.TaskRow']", instances: 'multiple', editable: ['width'] },
   },
-  '.uilab/tokens.json': { tokens: { colorAccent: '#f00' } },
-  '.uilab/states.json': {
-    states: [
-      { id: 'normal', name: 'Normal', screenId: 'home' },
-      { id: 'overdue', name: 'Overdue', screenId: 'home' },
-    ],
-  },
+  '.uilab/tokens.json': { color: { accent: '#f00' } },
+  '.uilab/states.json': { home: {
+    normal: { name: 'Normal' },
+    overdue: { name: 'Overdue' },
+  } },
   'dist/index.html': '<!doctype html><html><body><main>Preview</main></body></html>',
 }
 
@@ -46,7 +42,7 @@ describe('mockup ZIP importer', () => {
       defaultViewport: { width: 375, height: 812 },
       screens: [{ id: 'home' }],
       states: [{ id: 'normal' }, { id: 'overdue' }],
-      components: [{ id: 'card' }],
+      components: [{ id: 'Home.TaskRow', selector: "[data-uilab-component='Home.TaskRow']", editable: ['width'] }],
     })
     expect(imported.previewHtml).toContain('Preview')
   })
@@ -68,7 +64,7 @@ describe('mockup ZIP importer', () => {
   it('reports invalid adapter schemas with a readable error', async () => {
     await expect(importMockupZip(await makeZip({
       '.uilab/components.json': {
-        components: [{ id: 'card', name: 'Card', type: 'Card', instances: 'single', editableProperties: ['transform'] }],
+        'Home.TaskRow': { selector: "[data-uilab-component='Home.TaskRow']", instances: 'single', editable: ['transform'] },
       },
     }))).rejects.toEqual(expect.objectContaining({
       code: 'invalid-schema',

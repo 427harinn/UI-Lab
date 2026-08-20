@@ -8,26 +8,26 @@ const project = {
   defaultViewport: { width: 390, height: 844 },
 }
 
-const screen = { id: 'home', name: 'Home', path: '/home', defaultState: 'normal' }
+const screen = { name: 'Home', path: '/home', defaultState: 'normal' }
 
 describe('Adapter v1 schemas', () => {
   it('accepts the minimal adapter documents', () => {
     expect(adapterProjectSchema.safeParse(project).success).toBe(true)
-    expect(adapterScreensSchema.safeParse({ screens: [screen] }).success).toBe(true)
+    expect(adapterScreensSchema.safeParse({ home: screen }).success).toBe(true)
     expect(adapterComponentSchema.safeParse({
-      id: 'card', name: 'Card', type: 'Card', instances: 'multiple', editableProperties: ['width', 'color'],
+      selector: "[data-uilab-component='Card']", instances: 'multiple', editable: ['width', 'color'],
     }).success).toBe(true)
-    expect(adapterStatesSchema.safeParse({ states: [{ id: 'normal', name: 'Normal', screenId: 'home' }] }).success).toBe(true)
+    expect(adapterStatesSchema.safeParse({ home: { normal: { name: 'Normal' } } }).success).toBe(true)
   })
 
   it('rejects unsupported format versions and editable properties', () => {
     expect(adapterProjectSchema.safeParse({ ...project, formatVersion: 2 }).success).toBe(false)
     expect(adapterComponentSchema.safeParse({
-      id: 'card', name: 'Card', type: 'Card', instances: 'single', editableProperties: ['transform'],
+      selector: "[data-uilab-component='Card']", instances: 'single', editable: ['transform'],
     }).success).toBe(false)
   })
 
   it('resolves a screen default state even when the adapter does not declare a matching state', () => {
-    expect(resolveDefaultState(screen, [])).toBe('normal')
+    expect(resolveDefaultState({ id: 'home', ...screen }, [])).toBe('normal')
   })
 })

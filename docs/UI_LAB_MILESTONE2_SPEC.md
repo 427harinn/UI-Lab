@@ -109,6 +109,38 @@ HouseToDo-Mockup.zip
 
 Milestone 2 must add adapter-specific Zod schemas matching Adapter v1.
 
+The authoritative external shapes are object documents keyed by stable IDs:
+
+```json
+// screens.json
+{
+  "home": { "name": "Home", "path": "/home", "defaultState": "normal" }
+}
+```
+
+```json
+// components.json
+{
+  "Home.TaskRow": {
+    "selector": "[data-uilab-component='Home.TaskRow']",
+    "instances": "multiple",
+    "editable": ["width", "color"]
+  }
+}
+```
+
+```json
+// states.json
+{
+  "home": {
+    "normal": { "name": "Normal" },
+    "overdue": { "name": "Overdue" }
+  }
+}
+```
+
+`tokens.json` is a direct JSON object. UI Lab may normalize the validated object documents into arrays for its internal editor state, but the ZIP contract remains the object form above. Components must preserve their required `selector` and formal `editable` fields.
+
 Required:
 
 - adapter project schema

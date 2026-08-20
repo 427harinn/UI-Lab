@@ -16,7 +16,7 @@ Zod schemas in `src/schemas/project.ts` are the source of truth for persisted pr
 
 ## Mockup import architecture
 
-`src/schemas/adapter.ts` defines the strict Adapter v1 documents and the normalized `ImportedMockup` model. `src/features/mockup/importer.ts` reads the five required `.uilab` files with JSZip, maps each parse failure to a readable `MockupImportError`, validates `project.entry`, and reads the preferred single-file HTML entry. `src/features/mockup/route.ts` is the only route builder and produces `{entry}#{path}?uilabState={state}`.
+`UI_LAB_ADAPTER_SPEC_v1.md` is the authoritative external contract. `src/schemas/adapter.ts` defines its strict Adapter v1 documents and the normalized `ImportedMockup` model. `src/features/mockup/importer.ts` reads the five required `.uilab` files with JSZip, maps each parse failure to a readable `MockupImportError`, validates `project.entry`, normalizes the external object documents, and reads the preferred single-file HTML entry. `src/features/mockup/route.ts` is the only route builder and produces `{entry}#{path}?uilabState={state}`.
 
 The Zustand store keeps validated adapter data and preview HTML in memory only. It maps screens, states, components, tokens, source metadata, and the adapter viewport into the existing `UiLabProject` shape. Screen changes resolve the new screen's `defaultState`; state changes are restricted by the navigator to states declared for the selected screen.
 
@@ -26,4 +26,4 @@ Only project metadata is persisted. Raw ZIP bytes, JSZip objects, preview HTML, 
 
 ## Deliberate boundaries
 
-The authoritative `UI_LAB_ADAPTER_SPEC_v1.md` remains an external contract and is not present in this checkout. Adapter project files and iframe preview execution are implemented for Milestone 2. Element discovery/selection, source parsing, visual manipulation, Inspector editing, export packaging, screenshots, and backend services remain out of scope.
+Adapter project files and iframe preview execution are implemented for Milestone 2. Element discovery/selection, source parsing, visual manipulation, Inspector editing, export packaging, screenshots, and backend services remain out of scope.
