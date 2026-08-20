@@ -3,7 +3,7 @@ import { Toolbar } from './Toolbar'
 import { LeftPanel } from '../panels/LeftPanel'
 import { InspectorPanel } from '../panels/InspectorPanel'
 import { Preview } from './Preview'
-import { getEditorShortcut } from '../../features/editor/shortcuts'
+import { handleEditorShortcut } from '../../features/editor/shortcuts'
 import { useEditorStore } from '../../features/project/store'
 
 export function EditorShell() {
@@ -13,18 +13,7 @@ export function EditorShell() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const shortcut = getEditorShortcut(event)
-      if (!shortcut) return
-      if (shortcut === 'undo') {
-        event.preventDefault()
-        undo()
-      } else if (shortcut === 'redo') {
-        event.preventDefault()
-        redo()
-      } else {
-        event.preventDefault()
-        setSelection(undefined)
-      }
+      handleEditorShortcut(event, { undo, redo, clearSelection: () => setSelection(undefined) })
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)

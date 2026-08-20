@@ -28,6 +28,7 @@ import {
 import { readComputedStyleSnapshot, readInlineStyleSnapshot } from '../../features/visual-editing/inspector'
 import { captureIframeScreenshot } from '../../features/codex-export/screenshot'
 import { registerPreviewCapture, previewScopeKey, type PreviewCaptureScope } from '../../features/codex-export/previewCapture'
+import { handleEditorShortcut } from '../../features/editor/shortcuts'
 
 interface InteractionState {
   type: 'drag' | 'resize'
@@ -84,6 +85,7 @@ export function Preview() {
   const interactionRef = useRef<InteractionState | undefined>(undefined)
   const resizeListenersRef = useRef(new Map<HTMLElement, (event: PointerEvent) => void>())
   const iframeClickCleanupRef = useRef<(() => void) | undefined>(undefined)
+  const iframeShortcutCleanupRef = useRef<(() => void) | undefined>(undefined)
   const [iframeDocument, setIframeDocument] = useState<Document | null>(null)
   const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null)
   const [targets, setTargets] = useState<EditableElementTarget[]>([])
@@ -195,6 +197,8 @@ export function Preview() {
 
     iframeClickCleanupRef.current?.()
     iframeClickCleanupRef.current = undefined
+    iframeShortcutCleanupRef.current?.()
+    iframeShortcutCleanupRef.current = undefined
     overlayRoot?.remove()
     const nextRoot = document.createElement('div')
     nextRoot.className = 'uilab-editor-overlay'
@@ -204,6 +208,19 @@ export function Preview() {
     const overlayStyle = document.createElement('style')
     overlayStyle.textContent = '.moveable-control-box, .moveable-control, .moveable-direction, .moveable-line { pointer-events: auto !important; }'
     document.head.appendChild(overlayStyle)
+    const handleShortcut = (event: KeyboardEvent) => {
+      handleEditorShortcut(event, {
+        undo: () => useEditorStore.getState().undo(),
+        redo: () => useEditorStore.getState().redo(),
+        clearSelection: () => useEditorStore.getState().setSelection(undefined),
+      })
+    }
+    document.addEventListener('keydown', handleShortcut)
+    window.addEventListener('keydown', handleShortcut)
+    iframeShortcutCleanupRef.current = () => {
+      document.removeEventListener('keydown', handleShortcut)
+      window.removeEventListener('keydown', handleShortcut)
+    }
     const discovered = discoverEditableElements(document, project.components)
     targetsRef.current = discovered
     baseFramesRef.current = new WeakMap()
@@ -386,6 +403,7 @@ export function Preview() {
 
   useEffect(() => () => {
     iframeClickCleanupRef.current?.()
+    iframeShortcutCleanupRef.current?.()
     resizeListenersRef.current.forEach((listener, handle) => handle.removeEventListener('pointerdown', listener, true))
     resizeListenersRef.current.clear()
   }, [])

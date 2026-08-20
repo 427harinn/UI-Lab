@@ -14,7 +14,8 @@ async function createQualityAdapterZip(): Promise<Buffer> {
   zip.file('dist/index.html', `<!doctype html><html><head><style>
     * { box-sizing: border-box; } body { margin: 0; width: 390px; height: 844px; background: #f4f6fb; font-family: Arial, sans-serif; }
     [data-uilab-component] { position: absolute; left: 54px; top: 132px; width: 164px; height: 72px; display: grid; place-items: center; border-radius: 12px; color: white; background: #5874d8; font-size: 16px; }
-  </style></head><body><main><div data-uilab-component="Home.TaskRow" data-uilab-id="task-bird">Task Bird</div></main></body></html>`)
+    input { position: absolute; left: 24px; top: 24px; width: 180px; padding: 6px; }
+  </style></head><body><main><input aria-label="Native preview input" placeholder="Preview input" /><div data-uilab-component="Home.TaskRow" data-uilab-id="task-bird">Task Bird</div></main></body></html>`)
   return zip.generateAsync({ type: 'nodebuffer' })
 }
 
@@ -64,6 +65,31 @@ test('Milestone 7 Codex export exposes a busy state and a success status', async
   await expect(page.getByText('Codex package exported')).toBeVisible()
   await page.screenshot({ path: 'docs/screenshots/m7/03-status-feedback.png', fullPage: true })
   await expect(exportButton).toBeEnabled()
+})
+
+test('Milestone 7 handles shortcuts from iframe focus without stealing native input undo', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Mockup ZIP file').setInputFiles({ name: 'm7-quality.zip', mimeType: 'application/zip', buffer: await createQualityAdapterZip() })
+  const frame = page.frameLocator('iframe[title="M7 Quality preview"]')
+  const target = frame.locator('[data-uilab-id="task-bird"]')
+
+  await target.click()
+  await expect(page.getByTestId('selection-summary')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('selection-summary')).not.toBeVisible()
+
+  await target.click()
+  await page.getByLabel('W', { exact: true }).fill('206')
+  await page.getByLabel('W', { exact: true }).press('Enter')
+  await expect(page.getByTestId('dirty-indicator')).toContainText('1 changes')
+
+  await frame.locator('input[aria-label="Native preview input"]').focus()
+  await page.keyboard.press('Control+Z')
+  await expect(page.getByTestId('dirty-indicator')).toContainText('1 changes')
+
+  await target.click()
+  await page.keyboard.press('Control+Z')
+  await expect(page.getByTestId('dirty-indicator')).not.toBeVisible()
 })
 
 test('Milestone 7 allows Project Import replacement after Continue', async ({ page }) => {

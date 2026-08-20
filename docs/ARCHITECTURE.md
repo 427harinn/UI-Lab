@@ -115,8 +115,11 @@ services, and automatic PR work remain out of scope.
 ## Milestone 7 quality boundaries
 
 Keyboard handling is isolated in `src/features/editor/shortcuts.ts`. The shell
-only handles Undo, Redo, and Escape when the event target is not an input,
-textarea, select, or contenteditable element. Delete and Backspace have no
+and each trusted same-origin Preview iframe register the same Undo, Redo, and
+Escape handler. The Preview registers it on both its document and window during
+iframe load and removes both listeners on reload/unmount; an already-consumed
+event cannot run the action twice. The handler ignores input, textarea, select,
+and contenteditable targets across iframe realms. Delete and Backspace have no
 editor command. Inspector inputs own Enter/blur commit and Escape draft cancel,
 so browser-native text undo is never combined with project history.
 
