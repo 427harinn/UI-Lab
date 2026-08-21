@@ -10,6 +10,7 @@
     "test": "vitest run",
     "build": "tsc --noEmit && vite build",
     "test:e2e": "playwright test -c playwright.config.ts",
+    "test:e2e:house-todo": "playwright test -c playwright.config.ts e2e/house-todo.acceptance.pw.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

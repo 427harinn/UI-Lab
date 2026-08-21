@@ -66,6 +66,16 @@ design instructions, and current preview screenshots. It is separate from
 `.ui-project` and is not imported back into UI Lab. See
 [docs/CODEX_EXPORT_FORMAT.md](docs/CODEX_EXPORT_FORMAT.md).
 
+## Acceptance strategy
+
+UI Lab keeps two complementary E2E layers: fast synthetic Adapter fixtures
+cover the editor feature contracts, while the pinned
+[HouseToDo real-mockup acceptance fixture](e2e/fixtures/house-todo/fixture.json)
+covers the completed real Adapter through import, every metadata-derived
+screen/state, discovery, editing, Undo/Redo, project round trip, and Codex
+Export. The HouseToDo ZIP is stored in the repository and SHA-verified before
+the acceptance test, so local and CI runs are offline and reproducible.
+
 Moveable controls render inside the imported iframe document so all measurements use the preview content area's `(0, 0)` origin. Selection is reset when screen/state/import/iframe lifecycle changes. Codex Export, source rewriting, and screenshot export remain future milestones. Inspector edits do not rewrite source CSS or React files.
 
 ## Editing workflow and keyboard shortcuts

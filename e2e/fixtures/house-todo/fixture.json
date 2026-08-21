@@ -1,0 +1,6 @@
+{
+  "upstreamRepository": "427harinn/HouseToDo-Mockup",
+  "upstreamMergeCommit": "2f8821b170c73b09b158a9a390a42e17e2e7f505",
+  "artifactPath": "e2e/fixtures/house-todo/HouseToDo-Mockup-uilab-v1.zip",
+  "expectedSha256": "D1237D048DFB03711C83B1A55DCCB78425C7EC4633A4DB5B56C9DF06FD920ADE"
+}
