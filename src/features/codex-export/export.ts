@@ -4,6 +4,7 @@ import { uiLabProjectSchema, type UiChange, type UiLabProject } from '../../sche
 import { stableJson } from '../project/package'
 import { codexChangesDocumentSchema, codexExportFormatVersion, codexExportManifestSchema, codexScreensDocumentSchema, type CodexChange } from './schema'
 import { previewScopeKey, type PreviewCaptureScope } from './previewCapture'
+import { effectiveChangeScope } from '../visual-editing/scope'
 
 export const CODEX_EXPORT_FILES = [
   'ui-changes.json',
@@ -60,7 +61,10 @@ export function resolveFinalCodexChanges(project: UiLabProject): CodexChange[] {
   for (const change of projectResult.data.changes) {
     const stateId = normalizedStateId(projectResult.data, change)
     validateChangeTarget(projectResult.data, change, stateId)
-    const key = [change.screenId, stateId, change.elementId, change.property].join('::')
+    const scope = effectiveChangeScope(change)
+    const key = scope === 'component'
+      ? [change.screenId, stateId, change.componentId, change.property, scope].join('::')
+      : [change.screenId, stateId, change.elementId, change.property, scope].join('::')
     const previous = final.get(key)
     final.set(key, {
       screenId: change.screenId,
@@ -68,6 +72,8 @@ export function resolveFinalCodexChanges(project: UiLabProject): CodexChange[] {
       componentId: change.componentId as string,
       instanceId: change.elementId,
       property: change.property,
+      ...(scope === 'component' ? { scope: 'component' as const, referenceInstanceId: change.referenceInstanceId ?? change.elementId } : {}),
+      ...(change.subProperty ? { subProperty: change.subProperty } : {}),
       ...(previous?.before !== undefined ? { before: previous.before } : change.before !== undefined ? { before: change.before } : {}),
       after: change.after,
       valueType: change.valueType,
@@ -116,6 +122,7 @@ This package contains visual changes created in UI Lab so they can be implemente
 - visual means a visual target. Reinterpret it within the existing layout; do not copy raw px coordinates into absolute positioning.
 - target means an approximate goal and may be implemented with the closest stable source-level value.
 - componentId is the primary implementation target.
+- scope: component means a semantic shared implementation intent for all instances in the specified screen/state; do not create one-off instance overrides.
 - instanceId is a visual reference. An instance-specific override is allowed only when a clear exception is required; do not hard-code a DOM instance merely because UI Lab edited it.
 - Preserve behavior and business logic. Do not change unrelated UI.
 
@@ -181,7 +188,7 @@ export function buildDesignMarkdown(project: UiLabProject, importedMockup: Impor
   for (const componentId of componentSummaries) lines.push(`- ${componentId}`)
   lines.push('', '## UI Lab changes', '')
   for (const change of changes) {
-    lines.push(`- ${change.componentId} / ${change.instanceId} / ${change.screenId} / ${change.stateId}: ${change.property} (${change.valueType}) ${formatValue(change.before)} → ${formatValue(change.after)}`)
+    lines.push(`- ${change.componentId} / ${change.instanceId} / ${change.screenId} / ${change.stateId}: ${change.property} (${change.scope ?? 'instance'}; ${change.valueType}) ${formatValue(change.before)} → ${formatValue(change.after)}`)
   }
   lines.push('', 'This document describes the intended visual result. IMPLEMENTATION.md describes how to implement it safely within the existing application architecture.', '')
   return lines.join('\n')

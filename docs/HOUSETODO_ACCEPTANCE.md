@@ -36,3 +36,13 @@ without changing an unrelated assertion.
 
 These follow-ups are documented only; they are not implemented by this
 acceptance milestone.
+
+## M10 Calendar scope check
+
+The M10 E2E reads the pinned Adapter metadata and confirms that
+`Calendar.DayCell` is declared `instances: "multiple"` with `height` editable.
+On the real `/calendar` screen, repeated selection clicks traverse the
+declared `Calendar.Page → Calendar.MonthGrid → Calendar.DayCell` ancestry.
+Selecting `All instances` and entering a new height applies one component-scope
+change to every rendered day cell. The HouseToDo ZIP and its expected SHA256
+are not modified.

@@ -50,6 +50,14 @@ describe('Codex Export', () => {
     expect(codexChangesDocumentSchema.parse({ formatVersion: 1, project: 'HouseToDo', changes: resolveFinalCodexChanges(project) })).toBeTruthy()
   })
 
+  it('exports one component-scope intent with its reference instance', () => {
+    const { project } = createFixture()
+    addChange(project, { elementId: 'task-a', property: 'width', before: 164, after: 206, valueType: 'exact', scope: 'component', referenceInstanceId: 'task-a' })
+    const changes = resolveFinalCodexChanges(project)
+    expect(changes).toEqual([expect.objectContaining({ scope: 'component', componentId: 'Home.TaskRow', instanceId: 'task-a', referenceInstanceId: 'task-a', after: 206 })])
+    expect(buildImplementationMarkdown(project, changes.length)).toContain('scope: component')
+  })
+
   it.each([
     ['stale screen', (project: UiLabProject) => addChange(project, { screenId: 'missing', after: 20, property: 'fontSize', elementId: 'task-a' }), 'screen'],
     ['stale state', (project: UiLabProject) => addChange(project, { stateId: 'missing', after: 20, property: 'fontSize', elementId: 'task-a' }), 'state'],

@@ -49,3 +49,9 @@ The storage key is `ui-lab:project:v1`. A saved value must pass the Zod project 
 Undo/Redo stacks are intentionally excluded from the archive. A successful Project Import restores the saved current project and starts with `past=[]` and `future=[]`; new edits create new history entries.
 
 The future mockup source must follow the external `UI_LAB_ADAPTER_SPEC_v1.md` contract. This document does not redefine that contract.
+
+M10 keeps Project formatVersion 1. `UiChange.scope` is optional: omitted old
+records migrate by semantic default to `instance`; component-scoped records
+use the existing `componentId` and reference `elementId` plus optional
+`referenceInstanceId`. Edit scope selection, selection depth, breadcrumbs,
+DOM nodes, and history stacks are transient editor state and are not exported.

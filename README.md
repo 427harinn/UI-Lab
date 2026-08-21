@@ -1,6 +1,6 @@
 # UI Lab
 
-UI Lab is a browser-based visual UI editor. Milestone 7 hardens the editor shell with safe shortcuts, editing feedback, guarded imports, accessibility, Storybook, and visual regression coverage.
+UI Lab is a browser-based visual UI editor. Milestone 10 adds depth-aware Adapter selection, safe edit scope, and flow-aware vertical spacing edits while preserving the Adapter v1 and M9 interaction contracts.
 
 ## Development
 
@@ -97,3 +97,11 @@ Undo/redo shortcuts work while focus remains in the trusted Preview iframe and a
 Visual regression snapshots live under `e2e/m7.quality.pw.ts-snapshots/`; `docs/screenshots/m7/` contains PR evidence screenshots and is intentionally separate.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md), and [.ai/MILESTONE.md](.ai/MILESTONE.md) for implementation details and status.
+
+## Milestone 10 editing
+
+When nested Adapter targets overlap, repeat the same click at the same pointer location to cycle `outer → inner → deeper → outer`. Only Adapter-declared editable targets participate; arbitrary DOM is never selectable. The Inspector shows a compact selection breadcrumb and resets the cycle when the pointer moves, the screen/state or iframe changes, discovery changes, or Select/Interact mode changes.
+
+For repeated semantic components, the Inspector defaults to `This instance`. `All instances` is available only when Adapter metadata declares `instances: "multiple"`. A component-scope edit is stored as one semantic change with `scope: "component"`, its component ID, and a reference instance; it applies to matching instances in the current screen/state, including instances discovered later. Old changes without `scope` remain instance-scoped.
+
+Vertical drags in safe block flow, flex-column, or grid-flow layouts can be interpreted as `Spacing · margin-top …` and are exported as exact `margin` changes with a `margin-top` sub-property. Absolute/fixed/sticky, horizontal flex-row, ambiguous layouts, and targets without Adapter-editable margin use the existing visual Move path. Hold Alt/Option during a drag to force visual positioning.

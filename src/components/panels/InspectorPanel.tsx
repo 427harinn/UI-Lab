@@ -9,6 +9,7 @@ import {
   type InspectorStyleProperty,
 } from '../../features/visual-editing/inspector'
 import { createDimensionChange, createPositionChange, createStyleChange, upsertChange } from '../../features/visual-editing/changes'
+import { canUseComponentScope, type EditScope } from '../../features/visual-editing/scope'
 
 type InspectorValue = string | number
 
@@ -130,6 +131,9 @@ export function InspectorPanel() {
   const commitProject = useEditorStore((state) => state.commitProject)
   const updateSelectionFrame = useEditorStore((state) => state.updateSelectionFrame)
   const updateSelectionStyles = useEditorStore((state) => state.updateSelectionStyles)
+  const updateSelectionScopeValues = useEditorStore((state) => state.updateSelectionScopeValues)
+  const editScope = useEditorStore((state) => state.editScope)
+  const setEditScope = useEditorStore((state) => state.setEditScope)
 
   if (!selectedElement) {
     return (
@@ -144,6 +148,12 @@ export function InspectorPanel() {
   const state = screen?.states.find((item) => item.id === currentStateId)
   const styles = selectedElement.styles ?? defaultInspectorStyles
   const isEditable = (property: EditableProperty) => selectedElement.editableProperties.includes(property)
+  const component = project.components.find((item) => item.id === selectedElement.componentId)
+  const componentScopeAllowed = canUseComponentScope(project, selectedElement.componentId, selectedElement.componentInstanceCount ?? 0)
+  const scopeValue = (property: string, fallback: InspectorValue): InspectorValue => editScope === 'component'
+    ? selectedElement.scopeValues?.[property] ?? fallback
+    : fallback
+  const updateScopedValue = (property: string, value: InspectorValue) => updateSelectionScopeValues({ ...(selectedElement.scopeValues ?? {}), [property]: value })
 
   const commitValue = (property: EditableProperty, raw: string): boolean => {
     if (!isEditable(property) || !currentScreenId) return false
@@ -154,25 +164,30 @@ export function InspectorPanel() {
     let nextFrame = currentFrame
     let nextStyles = styles
 
+    const scope: EditScope = editScope === 'component' && componentScopeAllowed ? 'component' : 'instance'
     if (property === 'position') return false
     if (property === 'width' || property === 'height') {
       const value = parseInspectorNumber(property, raw)
       if (value === undefined) return false
-      if (currentFrame[property] === value) return true
+      const currentValue = scopeValue(property, currentFrame[property])
+      if (currentValue !== 'Mixed' && currentValue === value) return true
       nextFrame = { ...currentFrame, [property]: value }
-      change = createDimensionChange(currentScreenId, currentStateId, elementId, componentId, property, currentFrame[property], value)
+      const beforeValue = typeof currentValue === 'number' ? currentValue : currentFrame[property]
+      change = createDimensionChange(currentScreenId, currentStateId, elementId, componentId, property, beforeValue, value, undefined, { scope, referenceInstanceId: elementId })
     } else if (isStyleProperty(property)) {
-      const currentValue = styles[property]
+      const displayedValue = scopeValue(property, styles[property])
+      const currentValue = displayedValue === 'Mixed' ? styles[property] : displayedValue
       if (typeof currentValue === 'number') {
         const value = parseInspectorNumber(property, raw)
         if (value === undefined) return false
         if (currentValue === value) return true
-        change = createStyleChange(currentScreenId, currentStateId, elementId, componentId, property, currentValue, value)
+        if (scope === 'instance' && currentValue === value) return true
+        change = createStyleChange(currentScreenId, currentStateId, elementId, componentId, property, currentValue, value, undefined, { scope, referenceInstanceId: elementId })
         nextStyles = { ...styles, [property]: value }
       } else {
         if (!isSafeCssValue(property, raw)) return false
-        if (currentValue === raw) return true
-        change = createStyleChange(currentScreenId, currentStateId, elementId, componentId, property, currentValue, raw)
+        if (scope === 'instance' && currentValue === raw) return true
+        change = createStyleChange(currentScreenId, currentStateId, elementId, componentId, property, currentValue, raw, undefined, { scope, referenceInstanceId: elementId })
         nextStyles = { ...styles, [property]: raw }
       }
     }
@@ -180,6 +195,7 @@ export function InspectorPanel() {
     commitProject({ ...project, changes: upsertChange(project.changes, change) })
     if (property === 'width' || property === 'height') updateSelectionFrame(nextFrame)
     if (isStyleProperty(property)) updateSelectionStyles(nextStyles)
+    updateScopedValue(property, property === 'width' || property === 'height' ? nextFrame[property] : nextStyles[property as InspectorStyleProperty])
     return true
   }
 
@@ -189,14 +205,14 @@ export function InspectorPanel() {
     if (value === undefined) return false
     if (selectedElement.frame[axis] === value) return true
     const after = { ...selectedElement.frame, [axis]: value }
-    const change = createPositionChange(currentScreenId, currentStateId, selectedElement.elementId, selectedElement.componentId, selectedElement.frame, after)
+    const change = createPositionChange(currentScreenId, currentStateId, selectedElement.elementId, selectedElement.componentId, selectedElement.frame, after, undefined, { scope: editScope, referenceInstanceId: selectedElement.elementId })
     commitProject({ ...project, changes: upsertChange(project.changes, change) })
     updateSelectionFrame({ ...selectedElement.frame, [axis]: value })
     return true
   }
 
   const renderStyleProperty = (property: InspectorStyleProperty, label: string) => (
-    isEditable(property) ? <PropertyInput key={property} property={property} label={label} value={styles[property]} disabled={false} onCommit={commitValue} /> : null
+    isEditable(property) ? <PropertyInput key={`${property}-${scopeValue(property, styles[property])}`} property={property} label={label} value={scopeValue(property, styles[property])} disabled={false} onCommit={commitValue} /> : null
   )
 
   return (
@@ -204,6 +220,14 @@ export function InspectorPanel() {
       <div className="panel-heading"><div><p className="eyebrow">Properties</p><h2>Inspector</h2></div></div>
       <div className="selection-summary" data-testid="selection-summary">
         <div className="selection-summary__identity"><span className="selection-summary__label">Selected instance</span><strong>{selectedElement.componentId}</strong><span data-testid="selected-instance-id">{selectedElement.elementId}</span></div>
+        {selectedElement.selectionPath && selectedElement.selectionPath.length > 0 && <nav className="selection-breadcrumb" aria-label="Selection ancestry" data-testid="selection-breadcrumb">
+          {selectedElement.selectionPath.map((item, index) => <span key={`${item.componentId}-${item.instanceId}`} className={index === selectedElement.selectionPath!.length - 1 ? 'selection-breadcrumb__current' : undefined}>{index > 0 && <span aria-hidden="true"> › </span>}{item.componentId}</span>)}
+        </nav>}
+        {component && <fieldset className="edit-scope" aria-label="Edit scope">
+          <legend>Apply to</legend>
+          <label><input type="radio" name="edit-scope" value="instance" checked={editScope === 'instance'} onChange={() => setEditScope('instance')} /> This instance</label>
+          <label className={!componentScopeAllowed ? 'edit-scope__disabled' : undefined}><input type="radio" name="edit-scope" value="component" checked={editScope === 'component'} disabled={!componentScopeAllowed} onChange={() => setEditScope('component')} /> All instances</label>
+        </fieldset>}
         <dl className="inspector-context-grid">
           <div><dt>Component ID</dt><dd>{selectedElement.componentId}</dd></div>
           <div><dt>Instance ID</dt><dd>{selectedElement.elementId}</dd></div>
@@ -223,8 +247,8 @@ export function InspectorPanel() {
         </div></section>}
 
         {(isEditable('width') || isEditable('height')) && <section className="inspector-section"><h3>Size</h3><div className="inspector-fields">
-          {isEditable('width') && <PropertyInput property="width" label="W" value={selectedElement.frame.width} disabled={false} onCommit={commitValue} />}
-          {isEditable('height') && <PropertyInput property="height" label="H" value={selectedElement.frame.height} disabled={false} onCommit={commitValue} />}
+          {isEditable('width') && <PropertyInput property="width" label="W" value={scopeValue('width', selectedElement.frame.width)} disabled={false} onCommit={commitValue} />}
+          {isEditable('height') && <PropertyInput property="height" label="H" value={scopeValue('height', selectedElement.frame.height)} disabled={false} onCommit={commitValue} />}
         </div></section>}
 
         {(['fontSize', 'fontWeight', 'lineHeight'] as InspectorStyleProperty[]).some(isEditable) && <section className="inspector-section"><h3>Typography</h3><div className="inspector-fields">{renderStyleProperty('fontSize', 'Font Size')}{renderStyleProperty('fontWeight', 'Font Weight')}{renderStyleProperty('lineHeight', 'Line Height')}</div></section>}

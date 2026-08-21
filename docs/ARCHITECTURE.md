@@ -202,3 +202,43 @@ toggle uses `aria-pressed`, visible focus, and keyboard-operable buttons.
 Discovery, click/shortcut, hashchange, MutationObserver, RAF/timeout, and
 resize/Moveable resources are disconnected on iframe reload, project
 replacement, mode switch, and component unmount.
+
+## Milestone 10 selection, scope, and flow editing
+
+`selectionCandidates.ts` is the selection-depth boundary. A click walks the
+event target's DOM ancestry and intersects it with the current discovered
+Adapter targets. Candidates are ordered from outermost to deepest, so query
+order and z-index do not define behavior. A small pointer tolerance lets
+repeated clicks cycle one candidate set; discovery, pointer movement,
+route/screen/state changes, iframe reload, import, and mode changes reset it.
+Interact returns before candidate resolution and never starts a cycle. The
+selection snapshot stores only IDs and a serializable breadcrumb path.
+
+Edit scope is transient editor state (`instance` by default), not project
+editor persistence. Adapter `instances: multiple` enables All instances;
+single components keep it disabled. `scope` is optional on `UiChange` for
+backward compatibility, and absent scope means `instance`. Component changes
+retain `componentId` plus the selected reference `elementId`/
+`referenceInstanceId`; they are one semantic record rather than one record per
+rendered node. Resolution matches screen, state, and component, so another
+screen or state cannot receive the edit. Preview applies the record to every
+matching discovered instance and rediscovery applies it to future instances.
+Undo/Redo therefore remains one transaction regardless of instance count.
+Mixed computed values are shown as `Mixed`; typing a new value explicitly
+unifies them.
+
+`flowLayout.ts` deliberately uses a conservative detector. A static/relative
+target with Adapter-editable `margin` inside block flow, flex-column, or grid
+flow is a spacing candidate. The supported mapping is target `margin-top`; no
+unrelated sibling margins are changed. Absolute/fixed/sticky targets,
+horizontal flex rows, missing/ambiguous parent layout, missing editable
+margin, and Alt/Option override use the existing visual position transform.
+While dragging, the footer reports `Spacing` or `Move`; committed spacing is
+an exact semantic `margin` change, never a raw visual coordinate change.
+
+Project packages preserve component-scope fields in the existing change array;
+transient selection, edit scope, and cycle state remain excluded. Codex Export
+v1 remains readable and gains optional `scope`, `referenceInstanceId`, and
+`subProperty` fields only when needed. Component scope tells Codex to update
+the shared semantic implementation within the exported screen/state, not to
+create one-off instance overrides.
