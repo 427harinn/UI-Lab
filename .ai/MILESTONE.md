@@ -232,3 +232,17 @@ Known follow-ups:
 
 - Discovery lifecycle after asynchronous render, hash transitions, and DOM mutation.
 - Interactive mockup actions competing with UI Lab selection.
+
+---
+
+## Milestone 9 — Preview Reliability & Interaction UX
+
+Status: COMPLETE
+
+- [x] Replace load-only discovery with a coalesced lifecycle for iframe load, hashchange, async commits, additions, and removals.
+- [x] Ignore editor-owned mutations and clean up observers, scheduled work, iframe listeners, and active pointer interactions.
+- [x] Re-resolve selected semantic component/instance identities after rediscovery or clear missing selections.
+- [x] Add accessible transient Select / Interact modes without changing Project or Codex export contracts.
+- [x] Preserve Select editing and pass native click/input/pointer behavior through in Interact.
+- [x] Add synthetic discovery/interaction E2E, HouseToDo real-fixture mode coverage, screenshots, Storybook, docs, and housekeeping.
+- [x] Run lint, typecheck, unit/integration, build, full E2E, HouseToDo acceptance, and Storybook build.

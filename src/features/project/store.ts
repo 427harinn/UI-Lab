@@ -7,6 +7,8 @@ import type { InspectorStyleSnapshot } from '../visual-editing/inspector'
 import { loadPersistedProject, persistProject, type ProjectStorage } from './persistence'
 import { loadProjectPackage } from './package'
 
+export type InteractionMode = 'select' | 'interact'
+
 export interface EditorStore {
   currentProject: UiLabProject
   viewport: Viewport
@@ -23,7 +25,9 @@ export interface EditorStore {
   future: UiLabProject[]
   canUndo: boolean
   canRedo: boolean
+  interactionMode: InteractionMode
   setViewport: (viewport: Viewport) => void
+  setInteractionMode: (mode: InteractionMode) => void
   setCurrentScreenId: (screenId?: string) => void
   setCurrentStateId: (stateId?: string) => void
   setSelectedElementId: (elementId?: string) => void
@@ -126,11 +130,13 @@ function createStore(storage: ProjectStorage | undefined) {
       future: [],
       canUndo: false,
       canRedo: false,
+      interactionMode: 'select',
       setViewport: (viewport) => {
         const current = get().currentProject
         if (current.viewport.width === viewport.width && current.viewport.height === viewport.height) return
         commitProject({ ...current, viewport: { ...viewport } })
       },
+      setInteractionMode: (interactionMode) => set({ interactionMode }),
       setCurrentScreenId: (currentScreenId) => {
         const state = get()
         const imported = state.importedMockup

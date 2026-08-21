@@ -20,6 +20,12 @@ button:disabled { cursor: not-allowed; }
 .toolbar__divider { width: 1px; height: 18px; background: #3a3f4b; }
 .toolbar__project-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aeb5c1; font-size: 13px; }
 .toolbar__controls { justify-content: flex-end; flex: 1; }
+.interaction-mode { display: flex; align-items: center; gap: 7px; color: #8d96a5; font-size: 11px; }
+.interaction-mode__toggle { display: inline-flex; padding: 2px; border: 1px solid #353b48; border-radius: 7px; background: #15181e; }
+.interaction-mode__button { border: 0; border-radius: 5px; padding: 5px 9px; background: transparent; color: #8d96a5; font-size: 11px; }
+.interaction-mode__button[aria-pressed="true"] { background: #3d527f; color: #f2f5fb; box-shadow: 0 1px 2px rgba(0, 0, 0, .24); }
+.interaction-mode__button:hover:not(:disabled) { border-color: transparent; background: #2a303b; }
+.interaction-mode__button[aria-pressed="true"]:hover:not(:disabled) { background: #4a6298; }
 .toolbar__field { display: flex; align-items: center; gap: 8px; color: #8d96a5; font-size: 12px; }
 select, button { border: 1px solid #353b48; border-radius: 6px; background: #22262f; color: #dfe3ea; padding: 7px 10px; font-size: 12px; }
 select:focus-visible, button:focus-visible { outline: 2px solid #7d9cff; outline-offset: 2px; }

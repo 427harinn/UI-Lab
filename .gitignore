@@ -5,3 +5,5 @@ test-results/
 playwright-report/
 storybook-static/
 .DS_Store
+.codex/
+house-todo-work/

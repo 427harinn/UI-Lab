@@ -7,6 +7,8 @@ import { commitInspectorValue, readInspectorValue, rgbFromHex } from './helpers/
 
 const evidenceDirectory = path.resolve(process.cwd(), 'docs/screenshots/m8')
 
+test.setTimeout(60_000)
+
 function iframeFor(page: Page): Locator {
   return page.locator('iframe.preview-frame')
 }
@@ -98,6 +100,33 @@ test('HouseToDo pinned Adapter covers import, all screens/states, editing, histo
   await expect(page.getByTestId('viewport-frame')).toHaveAttribute('aria-label', `Preview viewport ${fixture.project.defaultViewport.width} by ${fixture.project.defaultViewport.height}`)
   await expectPreviewRoute(page, fixture, fixture.screens[0].id, fixture.screens[0].defaultState)
   await page.screenshot({ path: path.join(evidenceDirectory, '01-house-todo-imported.png'), fullPage: true })
+
+  // M9 interaction boundary: Select captures an Adapter target without allowing
+  // the mockup link to navigate; Interact passes the same native link through.
+  const iframe = iframeFor(page)
+  const frame = page.frameLocator('iframe.preview-frame')
+  await page.getByRole('button', { name: 'Select', exact: true }).click()
+  const shoppingLink = frame.locator('a[aria-label="買い物"]')
+  await shoppingLink.click()
+  await expect(page.getByTestId('selected-instance-id')).toHaveText('app-bottom-navigation')
+  await expect.poll(async () => iframe.evaluate((element) => element.contentWindow?.location.hash ?? '')).toBe('#/home?uilabState=normal')
+
+  await page.getByRole('button', { name: 'Interact', exact: true }).click()
+  await shoppingLink.click()
+  await expect.poll(async () => iframe.evaluate((element) => element.contentWindow?.location.hash ?? '')).toContain('#/shopping')
+  // The native route replaces the screen DOM, so rediscovery correctly clears
+  // the old selection rather than retaining a stale navigation node.
+  await expect(page.getByTestId('selection-summary')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Select', exact: true }).click()
+  await screenButton(page, fixture, 'shopping').click()
+  await expectPreviewRoute(page, fixture, 'shopping', 'normal')
+  const shoppingItem = frame.locator('[data-uilab-component="Shopping.ItemRow"]').first()
+  await expect(shoppingItem).toBeVisible()
+  await shoppingItem.click()
+  await expect(page.getByTestId('selection-summary')).toContainText('Shopping.ItemRow')
+  await screenButton(page, fixture, 'home').click()
+  await expectPreviewRoute(page, fixture, 'home', 'normal')
 
   // Import validation is metadata-driven: the navigator must expose the exact Adapter ID sets.
   const navigatorScreenPaths = await page.locator('section[aria-labelledby="screens-heading"] .navigator-item__meta').allTextContents()

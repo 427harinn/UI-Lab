@@ -19,6 +19,17 @@ export const BasicState: Story = { render: () => <EditorShell /> }
 
 export const ToolbarOnly: Story = { render: () => <Toolbar /> }
 
+function InteractionModeStory({ mode }: { mode: 'select' | 'interact' }) {
+  useEffect(() => {
+    useEditorStore.getState().setInteractionMode(mode)
+    return () => useEditorStore.getState().setInteractionMode('select')
+  }, [mode])
+  return <Toolbar />
+}
+
+export const SelectModeActive: Story = { render: () => <InteractionModeStory mode="select" /> }
+export const InteractModeActive: Story = { render: () => <InteractionModeStory mode="interact" /> }
+
 export const InspectorEmpty: Story = { render: () => <InspectorPanel /> }
 
 function SelectedInspector() {

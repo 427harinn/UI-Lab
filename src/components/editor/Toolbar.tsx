@@ -15,6 +15,8 @@ export function Toolbar() {
   const canUndo = useEditorStore((state) => state.canUndo)
   const canRedo = useEditorStore((state) => state.canRedo)
   const setViewport = useEditorStore((state) => state.setViewport)
+  const interactionMode = useEditorStore((state) => state.interactionMode)
+  const setInteractionMode = useEditorStore((state) => state.setInteractionMode)
   const undo = useEditorStore((state) => state.undo)
   const redo = useEditorStore((state) => state.redo)
   const importMockupFile = useEditorStore((state) => state.importMockupFile)
@@ -70,6 +72,27 @@ export function Toolbar() {
         {changeCount > 0 && <span className="dirty-indicator" data-testid="dirty-indicator">● {changeCount} changes</span>}
       </div>
       <div className="toolbar__controls">
+        <div className="interaction-mode" aria-label="Preview interaction mode">
+          <span className="interaction-mode__label">Preview</span>
+          <div className="interaction-mode__toggle" role="group" aria-label="Preview interaction mode">
+            <button
+              type="button"
+              className="interaction-mode__button"
+              aria-pressed={interactionMode === 'select'}
+              onClick={() => setInteractionMode('select')}
+            >
+              Select
+            </button>
+            <button
+              type="button"
+              className="interaction-mode__button"
+              aria-pressed={interactionMode === 'interact'}
+              onClick={() => setInteractionMode('interact')}
+            >
+              Interact
+            </button>
+          </div>
+        </div>
         <label className="toolbar__field">
           <span>Viewport</span>
           <select

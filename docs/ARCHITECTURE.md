@@ -163,3 +163,38 @@ left unchanged. Storybook stories live in `src/components/editor/` and isolate
 the shell, Toolbar, empty/selected Inspector, status feedback, and guard dialog.
 Playwright snapshots in `e2e/m7.quality.pw.ts-snapshots/` are regression
 baselines; `docs/screenshots/m7/` is PR evidence and is not used as a baseline.
+
+## Milestone 9 preview reliability and interaction UX
+
+Preview target discovery is a lifecycle, not a one-time load callback. The
+iframe `load` handler installs one `MutationObserver` on the trusted same-origin
+document (`childList` + `subtree`), a `hashchange` listener on the iframe
+window, and a coalescing `requestAnimationFrame` scheduler in
+`src/features/visual-editing/discoveryLifecycle.ts`. Hash routes are also
+resolved back to Adapter screen/state scope before rediscovery, so a native
+preview route cannot leave the parent applying edits for the previous screen.
+All rediscovery enters the
+same `discoverEditableElements()` path. Observer callbacks do not discover
+immediately, so a burst of async commits is one refresh and ordinary inline
+style changes are not observed.
+
+The overlay root, Moveable controls, manual resize handles, and editor style
+node carry `data-uilab-editor-overlay`. Mutation records whose changes are
+editor-owned are ignored, preventing editor UI from causing observer loops.
+On every real refresh, `targetsRef`, React targets, and the iframe-local base
+style/frame caches are updated. A selected `componentId` + `instanceId` is
+re-resolved to the new DOM node when present; its frame/styles are read again.
+When the identity is gone, selection is cleared and stale DOM is never passed
+to Moveable.
+
+Preview interaction mode is transient Editor UI state in Zustand and is not
+part of project persistence, Project Export, or Codex Export. `Select` is the
+default and captures Adapter target clicks for the existing Inspector and
+Moveable workflow. `Interact` keeps the current Inspector selection visible but
+does not prevent or stop preview events, and hides Moveable/manual resize
+controls. Switching modes cancels active pointer interactions. The toolbar
+toggle uses `aria-pressed`, visible focus, and keyboard-operable buttons.
+
+Discovery, click/shortcut, hashchange, MutationObserver, RAF/timeout, and
+resize/Moveable resources are disconnected on iframe reload, project
+replacement, mode switch, and component unmount.
