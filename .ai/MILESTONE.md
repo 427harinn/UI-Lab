@@ -214,3 +214,21 @@ Implemented:
 - Iframe blank-area selection clearing and preview listener cleanup; Blob URLs are revoked for preview and downloads.
 - Reduced-motion CSS, visible focus styles, accessible labels/dialog semantics, Storybook editor-shell stories, and Playwright visual regression baselines.
 - Milestone 7 unit/integration and Playwright coverage plus PR evidence under `docs/screenshots/m7/`.
+
+---
+
+## Milestone 8 — HouseToDo Real-Mockup Acceptance Regression
+
+Status: COMPLETE
+
+Implemented:
+
+- Pinned the completed HouseToDo Adapter ZIP as an offline UI Lab E2E fixture with upstream provenance and SHA256 verification.
+- Added JSZip metadata-driven acceptance coverage for import, all Adapter screens/states, iframe route/readiness, target discovery, representative editing, Undo/Redo, Project round trip, and Codex Export.
+- Added M8 PR evidence screenshots and acceptance documentation.
+- Preserved the M3–M7 synthetic E2E layer and kept runtime changes out of scope.
+
+Known follow-ups:
+
+- Discovery lifecycle after asynchronous render, hash transitions, and DOM mutation.
+- Interactive mockup actions competing with UI Lab selection.

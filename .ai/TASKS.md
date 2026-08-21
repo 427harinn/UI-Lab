@@ -399,3 +399,18 @@ Known limitations:
 - Native browser download APIs remain the local delivery boundary.
 - Moveable interaction itself is not altered for reduced motion.
 - Multi-selection, source rewriting, cloud storage, collaboration, and production HouseToDo integration remain excluded.
+
+---
+
+## Milestone 8 — HouseToDo Real-Mockup Acceptance Regression
+
+Status: COMPLETE
+
+- [x] Update main and create `feat/m8-house-todo-acceptance`.
+- [x] Add the pinned offline HouseToDo fixture, provenance manifest, and SHA256 guard.
+- [x] Add metadata-driven JSZip helper for Adapter project, screens, states, components, and tokens.
+- [x] Add all-screen/all-state route, iframe, blank-preview, and fatal-runtime validation.
+- [x] Add representative discovery, editing, Undo/Redo, Project round trip, and Codex Export assertions.
+- [x] Add M8 evidence screenshots and acceptance/architecture documentation.
+- [x] Preserve synthetic M3–M7 E2E coverage and document discovery/interactive-selection follow-ups.
+- [x] Run final quality gates, commit, push, and open a non-merged PR.

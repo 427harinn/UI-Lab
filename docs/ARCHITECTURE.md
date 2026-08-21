@@ -112,6 +112,23 @@ changes, and Codex Export are local-only features. Source parsing/rewriting,
 production application changes, package installation, remote upload, backend
 services, and automatic PR work remain out of scope.
 
+## Real-mockup acceptance boundary
+
+Milestone 8 adds a pinned HouseToDo Adapter ZIP at
+`e2e/fixtures/house-todo/HouseToDo-Mockup-uilab-v1.zip`. The fixture manifest
+records the upstream repository, merge commit, artifact path, and expected
+SHA256. Acceptance startup verifies that digest and stops with an explicit
+fixture-changed error before importing anything when the bytes differ.
+
+The acceptance helper reads `.uilab/project.json`, `screens.json`,
+`components.json`, `states.json`, and `tokens.json` from that local ZIP with
+JSZip. Screen, state, and component identity assertions are derived from
+those documents at test runtime; no fixed screen count is a contract. The
+synthetic M3–M7 tests remain the fast UI Lab feature-contract layer, while the
+HouseToDo test owns real-mockup import, all-screen/state rendering and
+discovery, representative editing, history, project round trip, and Codex
+Export coverage.
+
 ## Milestone 7 quality boundaries
 
 Keyboard handling is isolated in `src/features/editor/shortcuts.ts`. The shell
