@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Moveable, { type OnDrag, type OnDragStart, type OnResize, type OnResizeStart } from 'react-moveable'
 import { useEditorStore } from '../../features/project/store'
-import { buildPreviewRoute } from '../../features/mockup/route'
+import { buildPreviewRoute, parsePreviewHash } from '../../features/mockup/route'
 import { getScreenPath, type ImportedMockup } from '../../schemas/adapter'
 import { discoverEditableElements, findEditableTargetAtNode } from '../../features/visual-editing/discovery'
+import { EDITOR_OWNED_ATTRIBUTE, createDiscoveryScheduler, shouldRediscoverMutations } from '../../features/visual-editing/discoveryLifecycle'
 import {
   canDragTarget,
   canResizeHeight,
@@ -70,13 +71,13 @@ export function Preview() {
   const importedMockup = useEditorStore((state) => state.importedMockup)
   const currentScreenId = useEditorStore((state) => state.currentScreenId)
   const currentStateId = useEditorStore((state) => state.currentStateId)
+  const interactionMode = useEditorStore((state) => state.interactionMode)
   const selectedElement = useEditorStore((state) => state.selectedElement)
-  const setSelection = useEditorStore((state) => state.setSelection)
   const updateSelectionFrame = useEditorStore((state) => state.updateSelectionFrame)
-  const updateSelectionStyles = useEditorStore((state) => state.updateSelectionStyles)
   const setImportError = useEditorStore((state) => state.setImportError)
   const commitProject = useEditorStore((state) => state.commitProject)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const overlayRootRef = useRef<HTMLElement | null>(null)
   const moveableRef = useRef<Moveable | null>(null)
   const targetsRef = useRef<EditableElementTarget[]>([])
   const baseFramesRef = useRef(new WeakMap<HTMLElement, VisualFrame>())
@@ -84,12 +85,19 @@ export function Preview() {
   const baseInlineStylesRef = useRef(new WeakMap<HTMLElement, ReturnType<typeof readInlineStyleSnapshot>>())
   const interactionRef = useRef<InteractionState | undefined>(undefined)
   const resizeListenersRef = useRef(new Map<HTMLElement, (event: PointerEvent) => void>())
+  const interactionModeRef = useRef(interactionMode)
   const iframeClickCleanupRef = useRef<(() => void) | undefined>(undefined)
   const iframeShortcutCleanupRef = useRef<(() => void) | undefined>(undefined)
+  const discoveryCleanupRef = useRef<(() => void) | undefined>(undefined)
+  const activeResizeCleanupRef = useRef<(() => void) | undefined>(undefined)
   const [iframeDocument, setIframeDocument] = useState<Document | null>(null)
   const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null)
   const [targets, setTargets] = useState<EditableElementTarget[]>([])
   const [snapActive, setSnapActive] = useState(false)
+
+  useEffect(() => {
+    interactionModeRef.current = interactionMode
+  }, [interactionMode])
 
   useEffect(() => {
     const unregister = registerPreviewCapture(async (scopes: PreviewCaptureScope[]) => {
@@ -154,12 +162,17 @@ export function Preview() {
     : undefined
 
   const applyProjectChangesToTargets = useCallback((nextTargets: EditableElementTarget[]) => {
-    if (!currentScreenId) return
+    const liveState = useEditorStore.getState()
+    const liveProject = liveState.currentProject
+    const liveScreenId = liveState.currentScreenId
+    const liveStateId = liveState.currentStateId
+    const liveSelection = liveState.selectedElement
+    if (!liveScreenId) return
     for (const target of nextTargets) {
       captureBaseStyles(target.element)
       const baseFrame = baseFramesRef.current.get(target.element) ?? getElementFrame(target.element)
       baseFramesRef.current.set(target.element, baseFrame)
-      const frame = resolveVisualFrame(project, currentScreenId, currentStateId, target.instanceId, baseFrame)
+      const frame = resolveVisualFrame(liveProject, liveScreenId, liveStateId, target.instanceId, baseFrame)
       applyVisualFrame(target.element, baseFrame, frame)
       const baseStyles = baseInspectorStylesRef.current.get(target.element) ?? readComputedStyleSnapshot(target.element)
       const baseInlineStyles = baseInlineStylesRef.current.get(target.element) ?? readInlineStyleSnapshot(target.element)
@@ -168,24 +181,43 @@ export function Preview() {
       const styles = applyInspectorStyleOverrides(
         target.element,
         baseInlineStyles,
-        project,
-        currentScreenId,
-        currentStateId,
+        liveProject,
+        liveScreenId,
+        liveStateId,
         target.instanceId,
         baseStyles,
       )
-      if (selectedElement?.elementId === target.instanceId && selectedElement.componentId === target.componentId) {
-        updateSelectionStyles(styles)
+      if (liveSelection?.elementId === target.instanceId && liveSelection.componentId === target.componentId) {
+        liveState.updateSelectionStyles(styles)
       }
     }
-    if (selectedElement) {
-      const selected = nextTargets.find((target) => target.instanceId === selectedElement.elementId && target.componentId === selectedElement.componentId)
+    if (liveSelection) {
+      const selected = nextTargets.find((target) => target.instanceId === liveSelection.elementId && target.componentId === liveSelection.componentId)
       if (selected) {
         const baseFrame = baseFramesRef.current.get(selected.element) ?? getElementFrame(selected.element)
-        updateSelectionFrame(resolveVisualFrame(project, currentScreenId, currentStateId, selected.instanceId, baseFrame))
+        liveState.updateSelectionFrame(resolveVisualFrame(liveProject, liveScreenId, liveStateId, selected.instanceId, baseFrame))
       }
     }
-  }, [currentScreenId, currentStateId, project, selectedElement, updateSelectionFrame, updateSelectionStyles])
+  }, [])
+
+  const reconcileSelection = useCallback((nextTargets: EditableElementTarget[]) => {
+    const liveState = useEditorStore.getState()
+    const liveSelection = liveState.selectedElement
+    if (!liveSelection) return
+    const replacement = nextTargets.find((target) => target.componentId === liveSelection.componentId && target.instanceId === liveSelection.elementId)
+    if (!replacement) {
+      liveState.setSelection(undefined)
+      return
+    }
+    const baseFrame = baseFramesRef.current.get(replacement.element) ?? getElementFrame(replacement.element)
+    const baseStyles = baseInspectorStylesRef.current.get(replacement.element) ?? readComputedStyleSnapshot(replacement.element)
+    liveState.setSelection({
+      ...liveSelection,
+      editableProperties: replacement.editableProperties,
+      frame: resolveVisualFrame(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, replacement.instanceId, baseFrame),
+      styles: resolveInspectorStyles(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, replacement.instanceId, baseStyles),
+    })
+  }, [])
 
   const handleIframeLoad = useCallback(() => {
     const document = iframeRef.current?.contentDocument
@@ -195,17 +227,21 @@ export function Preview() {
       return
     }
 
+    discoveryCleanupRef.current?.()
+    discoveryCleanupRef.current = undefined
     iframeClickCleanupRef.current?.()
     iframeClickCleanupRef.current = undefined
     iframeShortcutCleanupRef.current?.()
     iframeShortcutCleanupRef.current = undefined
-    overlayRoot?.remove()
+    overlayRootRef.current?.remove()
     const nextRoot = document.createElement('div')
     nextRoot.className = 'uilab-editor-overlay'
     nextRoot.setAttribute('data-uilab-editor-overlay', 'true')
     nextRoot.style.cssText = 'position:fixed;inset:0;z-index:2147483000;pointer-events:none;'
     document.body.appendChild(nextRoot)
+    overlayRootRef.current = nextRoot
     const overlayStyle = document.createElement('style')
+    overlayStyle.setAttribute(EDITOR_OWNED_ATTRIBUTE, 'true')
     overlayStyle.textContent = '.moveable-control-box, .moveable-control, .moveable-direction, .moveable-line { pointer-events: auto !important; }'
     document.head.appendChild(overlayStyle)
     const handleShortcut = (event: KeyboardEvent) => {
@@ -221,40 +257,71 @@ export function Preview() {
       document.removeEventListener('keydown', handleShortcut)
       window.removeEventListener('keydown', handleShortcut)
     }
-    const discovered = discoverEditableElements(document, project.components)
-    targetsRef.current = discovered
     baseFramesRef.current = new WeakMap()
     baseInspectorStylesRef.current = new WeakMap()
     baseInlineStylesRef.current = new WeakMap()
-    setTargets(discovered)
     setIframeDocument(document)
     setOverlayRoot(nextRoot)
-    setSelection(undefined)
-    applyProjectChangesToTargets(discovered)
+    useEditorStore.getState().setSelection(undefined)
+
+    const rediscover = () => {
+      if (iframeRef.current?.contentDocument !== document) return
+      const liveState = useEditorStore.getState()
+      const discovered = discoverEditableElements(document, liveState.currentProject.components)
+      targetsRef.current = discovered
+      setTargets(discovered)
+      reconcileSelection(discovered)
+      applyProjectChangesToTargets(discovered)
+    }
+
+    const scheduler = createDiscoveryScheduler(rediscover)
+    const observer = new MutationObserver((records) => {
+      if (shouldRediscoverMutations(records)) scheduler.scheduleRediscovery()
+    })
+    observer.observe(document, { childList: true, subtree: true })
+    const handleHashChange = () => {
+      const parsedRoute = parsePreviewHash(window.location.hash)
+      const liveState = useEditorStore.getState()
+      const liveImportedMockup = liveState.importedMockup
+      const screen = parsedRoute && liveImportedMockup?.screens.find((candidate) => getScreenPath(candidate) === parsedRoute.path)
+      if (screen && liveState.currentScreenId !== screen.id) liveState.setCurrentScreenId(screen.id)
+      const nextState = useEditorStore.getState()
+      if (screen && parsedRoute?.state && nextState.currentStateId !== parsedRoute.state) nextState.setCurrentStateId(parsedRoute.state)
+      scheduler.scheduleRediscovery()
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    discoveryCleanupRef.current = () => {
+      observer.disconnect()
+      window.removeEventListener('hashchange', handleHashChange)
+      scheduler.cleanupDiscovery()
+    }
+    rediscover()
 
     const handleClick = (event: MouseEvent) => {
       const target = findEditableTargetAtNode(event.target, targetsRef.current)
+      if (interactionModeRef.current === 'interact') return
       if (!target) {
-        setSelection(undefined)
+        useEditorStore.getState().setSelection(undefined)
         return
       }
       event.preventDefault()
       event.stopPropagation()
+      const liveState = useEditorStore.getState()
       const baseFrame = baseFramesRef.current.get(target.element) ?? getElementFrame(target.element)
-      const frame = resolveVisualFrame(project, currentScreenId ?? '', currentStateId, target.instanceId, baseFrame)
+      const frame = resolveVisualFrame(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, target.instanceId, baseFrame)
       const baseStyles = baseInspectorStylesRef.current.get(target.element) ?? readComputedStyleSnapshot(target.element)
-      setSelection({
+      liveState.setSelection({
         elementId: target.instanceId,
         componentId: target.componentId,
         frame,
         editableProperties: target.editableProperties,
-        styles: resolveInspectorStyles(project, currentScreenId ?? '', currentStateId, target.instanceId, baseStyles),
+        styles: resolveInspectorStyles(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, target.instanceId, baseStyles),
       })
     }
     document.addEventListener('click', handleClick, true)
     iframeClickCleanupRef.current = () => document.removeEventListener('click', handleClick, true)
     setImportError(undefined)
-  }, [applyProjectChangesToTargets, currentScreenId, currentStateId, importedMockup, overlayRoot, project, setImportError, setSelection])
+  }, [applyProjectChangesToTargets, importedMockup, reconcileSelection, setImportError])
 
   useEffect(() => {
     applyProjectChangesToTargets(targets)
@@ -333,6 +400,7 @@ export function Preview() {
   }, [commitProject])
 
   const handleManualResizeStart = useCallback((event: PointerEvent, direction: string, handle: HTMLElement) => {
+    if (interactionMode !== 'select') return
     if (!selectedTarget || !selectedElement || !iframeDocument) return
     if (interactionRef.current?.type === 'resize') return
     event.preventDefault()
@@ -365,7 +433,7 @@ export function Preview() {
         height: nextHeight,
       })
     }
-    const handlePointerUp = () => {
+    const cleanupListeners = () => {
       iframeDocument.removeEventListener('pointermove', handlePointerMove, true)
       iframeDocument.removeEventListener('mousemove', handlePointerMove, true)
       iframeDocument.removeEventListener('pointerup', handlePointerUp, true)
@@ -378,6 +446,10 @@ export function Preview() {
       handle.removeEventListener('mousemove', handlePointerMove, true)
       handle.removeEventListener('pointerup', handlePointerUp, true)
       handle.removeEventListener('mouseup', handlePointerUp, true)
+      if (activeResizeCleanupRef.current === cleanupListeners) activeResizeCleanupRef.current = undefined
+    }
+    const handlePointerUp = () => {
+      cleanupListeners()
       commitInteraction()
     }
     iframeDocument.addEventListener('pointermove', handlePointerMove, true)
@@ -392,7 +464,8 @@ export function Preview() {
     handle.addEventListener('mousemove', handlePointerMove, true)
     handle.addEventListener('pointerup', handlePointerUp, true)
     handle.addEventListener('mouseup', handlePointerUp, true)
-  }, [commitInteraction, iframeDocument, selectedElement, selectedTarget, updateInteractionFrame])
+    activeResizeCleanupRef.current = cleanupListeners
+  }, [commitInteraction, iframeDocument, interactionMode, selectedElement, selectedTarget, updateInteractionFrame])
 
   const registerManualResizeHandle = useCallback((handle: HTMLDivElement | null) => {
     if (!handle) return
@@ -401,19 +474,58 @@ export function Preview() {
     resizeListenersRef.current.set(handle, listener)
   }, [handleManualResizeStart])
 
-  useEffect(() => () => {
-    iframeClickCleanupRef.current?.()
-    iframeShortcutCleanupRef.current?.()
-    resizeListenersRef.current.forEach((listener, handle) => handle.removeEventListener('pointerdown', listener, true))
-    resizeListenersRef.current.clear()
+  const cancelActiveInteraction = useCallback(() => {
+    activeResizeCleanupRef.current?.()
+    activeResizeCleanupRef.current = undefined
+    moveableRef.current?.stopDrag()
+    interactionRef.current = undefined
   }, [])
 
+  useEffect(() => {
+    cancelActiveInteraction()
+    const resetSnapTimer = window.setTimeout(() => setSnapActive(false), 0)
+    return () => {
+      window.clearTimeout(resetSnapTimer)
+    }
+  }, [cancelActiveInteraction, interactionMode])
+
+  useEffect(() => {
+    const moveable = moveableRef.current
+    const resizeListeners = resizeListenersRef.current
+    return () => {
+      discoveryCleanupRef.current?.()
+      discoveryCleanupRef.current = undefined
+      iframeClickCleanupRef.current?.()
+      iframeShortcutCleanupRef.current?.()
+      overlayRootRef.current?.remove()
+      overlayRootRef.current = null
+      activeResizeCleanupRef.current?.()
+      activeResizeCleanupRef.current = undefined
+      moveable?.stopDrag()
+      resizeListeners.forEach((listener, handle) => handle.removeEventListener('pointerdown', listener, true))
+      resizeListeners.clear()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (importedMockup) return
+    discoveryCleanupRef.current?.()
+    discoveryCleanupRef.current = undefined
+    iframeClickCleanupRef.current?.()
+    iframeClickCleanupRef.current = undefined
+    iframeShortcutCleanupRef.current?.()
+    iframeShortcutCleanupRef.current = undefined
+    overlayRootRef.current?.remove()
+    overlayRootRef.current = null
+  }, [importedMockup])
+
   const handleDragStart = useCallback((event: OnDragStart) => {
+    if (interactionMode !== 'select') return
     if (!selectedTarget || !canDragTarget(selectedTarget)) return
     const before = selectedElement?.frame ?? getElementFrame(selectedTarget.element)
     event.set([0, 0])
     interactionRef.current = { type: 'drag', target: selectedTarget, before, current: before }
-  }, [selectedElement, selectedTarget])
+  }, [interactionMode, selectedElement, selectedTarget])
 
   const handleDrag = useCallback((event: OnDrag) => {
     const interaction = interactionRef.current
@@ -422,12 +534,13 @@ export function Preview() {
   }, [updateInteractionFrame])
 
   const handleResizeStart = useCallback((event: OnResizeStart) => {
+    if (interactionMode !== 'select') return
     if (!selectedTarget || !canResizeTarget(selectedTarget)) return
     const before = selectedElement?.frame ?? getElementFrame(selectedTarget.element)
     event.set([before.width, before.height])
     if (event.dragStart) event.dragStart.set([0, 0])
     interactionRef.current = { type: 'resize', target: selectedTarget, before, current: before }
-  }, [selectedElement, selectedTarget])
+  }, [interactionMode, selectedElement, selectedTarget])
 
   const handleResize = useCallback((event: OnResize) => {
     const interaction = interactionRef.current
@@ -441,7 +554,7 @@ export function Preview() {
     })
   }, [updateInteractionFrame])
 
-  const moveable = iframeDocument && overlayRoot && selectedTarget ? createPortal(
+  const moveable = iframeDocument && overlayRoot && interactionMode === 'select' && selectedTarget ? createPortal(
     <Moveable
       ref={moveableRef}
       target={selectedTarget.element}
@@ -486,7 +599,7 @@ export function Preview() {
     overlayRoot,
   ) : null
 
-  const manualResizeHandles = iframeDocument && overlayRoot && selectedTarget && selectedElement && canResizeTarget(selectedTarget)
+  const manualResizeHandles = iframeDocument && overlayRoot && interactionMode === 'select' && selectedTarget && selectedElement && canResizeTarget(selectedTarget)
     ? createPortal(
       getResizeDirections(selectedTarget).map((direction) => {
         const scrollX = iframeDocument.defaultView?.scrollX ?? 0
@@ -550,7 +663,7 @@ export function Preview() {
       </div>
       <footer className="preview-panel__footer">
         <span>{viewport.width} × {viewport.height}px</span>
-        {selectedTarget && <span className="preview-panel__editing-status">Guides enabled{snapActive ? ' · Snap active' : ''}</span>}
+        {selectedTarget && interactionMode === 'select' && <span className="preview-panel__editing-status">Guides enabled{snapActive ? ' · Snap active' : ''}</span>}
       </footer>
     </section>
   )

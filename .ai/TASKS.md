@@ -414,3 +414,19 @@ Status: COMPLETE
 - [x] Add M8 evidence screenshots and acceptance/architecture documentation.
 - [x] Preserve synthetic M3–M7 E2E coverage and document discovery/interactive-selection follow-ups.
 - [x] Run final quality gates, commit, push, and open a non-merged PR.
+
+---
+
+## Milestone 9 — Preview Reliability & Interaction UX
+
+Status: COMPLETE
+
+- [x] M9-01: Add the single discovery lifecycle with RAF coalescing, MutationObserver childList/subtree boundary, hashchange, and load/reload handling.
+- [x] M9-02: Exclude editor-owned DOM and keep iframe-local caches/transient DOM out of persistent Zustand state.
+- [x] M9-03: Reconcile target and selection identity across async render, target replacement, route changes, and missing targets.
+- [x] M9-04: Add transient accessible Select/Interact mode state, toolbar toggle, Moveable gating, and native event passthrough.
+- [x] M9-05: Add scheduler/unit coverage, synthetic async/conditional E2E flows, and HouseToDo interaction regression checks.
+- [x] M9-06: Add M9 evidence, README/architecture updates, Storybook states, and `.gitignore` housekeeping.
+- [x] M9-07: Run all quality gates and prepare a non-merged PR targeting `main`.
+
+Results: discovery refreshes are coalesced in one animation frame; Select suppresses native target clicks for Inspector editing; Interact preserves the current selection while allowing native preview behavior; Adapter v1, history, Project/Codex Export, synthetic regressions, and the pinned HouseToDo acceptance remain intact.
