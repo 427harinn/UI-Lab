@@ -176,7 +176,11 @@ preview route cannot leave the parent applying edits for the previous screen.
 All rediscovery enters the
 same `discoverEditableElements()` path. Observer callbacks do not discover
 immediately, so a burst of async commits is one refresh and ordinary inline
-style changes are not observed.
+style changes are not observed. The lifecycle is installed once per iframe
+document load; stable rediscovery callbacks read the current Zustand project,
+screen/state scope, and selection at callback time, so React renders do not
+reattach the observer and later project changes are applied to rediscovered
+targets.
 
 The overlay root, Moveable controls, manual resize handles, and editor style
 node carry `data-uilab-editor-overlay`. Mutation records whose changes are

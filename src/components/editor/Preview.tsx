@@ -73,12 +73,11 @@ export function Preview() {
   const currentStateId = useEditorStore((state) => state.currentStateId)
   const interactionMode = useEditorStore((state) => state.interactionMode)
   const selectedElement = useEditorStore((state) => state.selectedElement)
-  const setSelection = useEditorStore((state) => state.setSelection)
   const updateSelectionFrame = useEditorStore((state) => state.updateSelectionFrame)
-  const updateSelectionStyles = useEditorStore((state) => state.updateSelectionStyles)
   const setImportError = useEditorStore((state) => state.setImportError)
   const commitProject = useEditorStore((state) => state.commitProject)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const overlayRootRef = useRef<HTMLElement | null>(null)
   const moveableRef = useRef<Moveable | null>(null)
   const targetsRef = useRef<EditableElementTarget[]>([])
   const baseFramesRef = useRef(new WeakMap<HTMLElement, VisualFrame>())
@@ -163,13 +162,17 @@ export function Preview() {
     : undefined
 
   const applyProjectChangesToTargets = useCallback((nextTargets: EditableElementTarget[]) => {
-    if (!currentScreenId) return
-    const liveSelection = useEditorStore.getState().selectedElement
+    const liveState = useEditorStore.getState()
+    const liveProject = liveState.currentProject
+    const liveScreenId = liveState.currentScreenId
+    const liveStateId = liveState.currentStateId
+    const liveSelection = liveState.selectedElement
+    if (!liveScreenId) return
     for (const target of nextTargets) {
       captureBaseStyles(target.element)
       const baseFrame = baseFramesRef.current.get(target.element) ?? getElementFrame(target.element)
       baseFramesRef.current.set(target.element, baseFrame)
-      const frame = resolveVisualFrame(project, currentScreenId, currentStateId, target.instanceId, baseFrame)
+      const frame = resolveVisualFrame(liveProject, liveScreenId, liveStateId, target.instanceId, baseFrame)
       applyVisualFrame(target.element, baseFrame, frame)
       const baseStyles = baseInspectorStylesRef.current.get(target.element) ?? readComputedStyleSnapshot(target.element)
       const baseInlineStyles = baseInlineStylesRef.current.get(target.element) ?? readInlineStyleSnapshot(target.element)
@@ -178,42 +181,43 @@ export function Preview() {
       const styles = applyInspectorStyleOverrides(
         target.element,
         baseInlineStyles,
-        project,
-        currentScreenId,
-        currentStateId,
+        liveProject,
+        liveScreenId,
+        liveStateId,
         target.instanceId,
         baseStyles,
       )
       if (liveSelection?.elementId === target.instanceId && liveSelection.componentId === target.componentId) {
-        updateSelectionStyles(styles)
+        liveState.updateSelectionStyles(styles)
       }
     }
     if (liveSelection) {
       const selected = nextTargets.find((target) => target.instanceId === liveSelection.elementId && target.componentId === liveSelection.componentId)
       if (selected) {
         const baseFrame = baseFramesRef.current.get(selected.element) ?? getElementFrame(selected.element)
-        updateSelectionFrame(resolveVisualFrame(project, currentScreenId, currentStateId, selected.instanceId, baseFrame))
+        liveState.updateSelectionFrame(resolveVisualFrame(liveProject, liveScreenId, liveStateId, selected.instanceId, baseFrame))
       }
     }
-  }, [currentScreenId, currentStateId, project, updateSelectionFrame, updateSelectionStyles])
+  }, [])
 
   const reconcileSelection = useCallback((nextTargets: EditableElementTarget[]) => {
-    const liveSelection = useEditorStore.getState().selectedElement
+    const liveState = useEditorStore.getState()
+    const liveSelection = liveState.selectedElement
     if (!liveSelection) return
     const replacement = nextTargets.find((target) => target.componentId === liveSelection.componentId && target.instanceId === liveSelection.elementId)
     if (!replacement) {
-      setSelection(undefined)
+      liveState.setSelection(undefined)
       return
     }
     const baseFrame = baseFramesRef.current.get(replacement.element) ?? getElementFrame(replacement.element)
     const baseStyles = baseInspectorStylesRef.current.get(replacement.element) ?? readComputedStyleSnapshot(replacement.element)
-    setSelection({
+    liveState.setSelection({
       ...liveSelection,
       editableProperties: replacement.editableProperties,
-      frame: resolveVisualFrame(project, currentScreenId ?? '', currentStateId, replacement.instanceId, baseFrame),
-      styles: resolveInspectorStyles(project, currentScreenId ?? '', currentStateId, replacement.instanceId, baseStyles),
+      frame: resolveVisualFrame(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, replacement.instanceId, baseFrame),
+      styles: resolveInspectorStyles(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, replacement.instanceId, baseStyles),
     })
-  }, [currentScreenId, currentStateId, project, setSelection])
+  }, [])
 
   const handleIframeLoad = useCallback(() => {
     const document = iframeRef.current?.contentDocument
@@ -229,12 +233,13 @@ export function Preview() {
     iframeClickCleanupRef.current = undefined
     iframeShortcutCleanupRef.current?.()
     iframeShortcutCleanupRef.current = undefined
-    overlayRoot?.remove()
+    overlayRootRef.current?.remove()
     const nextRoot = document.createElement('div')
     nextRoot.className = 'uilab-editor-overlay'
     nextRoot.setAttribute('data-uilab-editor-overlay', 'true')
     nextRoot.style.cssText = 'position:fixed;inset:0;z-index:2147483000;pointer-events:none;'
     document.body.appendChild(nextRoot)
+    overlayRootRef.current = nextRoot
     const overlayStyle = document.createElement('style')
     overlayStyle.setAttribute(EDITOR_OWNED_ATTRIBUTE, 'true')
     overlayStyle.textContent = '.moveable-control-box, .moveable-control, .moveable-direction, .moveable-line { pointer-events: auto !important; }'
@@ -257,11 +262,12 @@ export function Preview() {
     baseInlineStylesRef.current = new WeakMap()
     setIframeDocument(document)
     setOverlayRoot(nextRoot)
-    setSelection(undefined)
+    useEditorStore.getState().setSelection(undefined)
 
     const rediscover = () => {
       if (iframeRef.current?.contentDocument !== document) return
-      const discovered = discoverEditableElements(document, project.components)
+      const liveState = useEditorStore.getState()
+      const discovered = discoverEditableElements(document, liveState.currentProject.components)
       targetsRef.current = discovered
       setTargets(discovered)
       reconcileSelection(discovered)
@@ -276,7 +282,8 @@ export function Preview() {
     const handleHashChange = () => {
       const parsedRoute = parsePreviewHash(window.location.hash)
       const liveState = useEditorStore.getState()
-      const screen = parsedRoute && importedMockup.screens.find((candidate) => getScreenPath(candidate) === parsedRoute.path)
+      const liveImportedMockup = liveState.importedMockup
+      const screen = parsedRoute && liveImportedMockup?.screens.find((candidate) => getScreenPath(candidate) === parsedRoute.path)
       if (screen && liveState.currentScreenId !== screen.id) liveState.setCurrentScreenId(screen.id)
       const nextState = useEditorStore.getState()
       if (screen && parsedRoute?.state && nextState.currentStateId !== parsedRoute.state) nextState.setCurrentStateId(parsedRoute.state)
@@ -294,26 +301,27 @@ export function Preview() {
       const target = findEditableTargetAtNode(event.target, targetsRef.current)
       if (interactionModeRef.current === 'interact') return
       if (!target) {
-        setSelection(undefined)
+        useEditorStore.getState().setSelection(undefined)
         return
       }
       event.preventDefault()
       event.stopPropagation()
+      const liveState = useEditorStore.getState()
       const baseFrame = baseFramesRef.current.get(target.element) ?? getElementFrame(target.element)
-      const frame = resolveVisualFrame(project, currentScreenId ?? '', currentStateId, target.instanceId, baseFrame)
+      const frame = resolveVisualFrame(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, target.instanceId, baseFrame)
       const baseStyles = baseInspectorStylesRef.current.get(target.element) ?? readComputedStyleSnapshot(target.element)
-      setSelection({
+      liveState.setSelection({
         elementId: target.instanceId,
         componentId: target.componentId,
         frame,
         editableProperties: target.editableProperties,
-        styles: resolveInspectorStyles(project, currentScreenId ?? '', currentStateId, target.instanceId, baseStyles),
+        styles: resolveInspectorStyles(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, target.instanceId, baseStyles),
       })
     }
     document.addEventListener('click', handleClick, true)
     iframeClickCleanupRef.current = () => document.removeEventListener('click', handleClick, true)
     setImportError(undefined)
-  }, [applyProjectChangesToTargets, currentScreenId, currentStateId, importedMockup, overlayRoot, project, reconcileSelection, setImportError, setSelection])
+  }, [applyProjectChangesToTargets, importedMockup, reconcileSelection, setImportError])
 
   useEffect(() => {
     applyProjectChangesToTargets(targets)
@@ -489,6 +497,8 @@ export function Preview() {
       discoveryCleanupRef.current = undefined
       iframeClickCleanupRef.current?.()
       iframeShortcutCleanupRef.current?.()
+      overlayRootRef.current?.remove()
+      overlayRootRef.current = null
       activeResizeCleanupRef.current?.()
       activeResizeCleanupRef.current = undefined
       moveable?.stopDrag()
@@ -505,6 +515,8 @@ export function Preview() {
     iframeClickCleanupRef.current = undefined
     iframeShortcutCleanupRef.current?.()
     iframeShortcutCleanupRef.current = undefined
+    overlayRootRef.current?.remove()
+    overlayRootRef.current = null
   }, [importedMockup])
 
   const handleDragStart = useCallback((event: OnDragStart) => {
