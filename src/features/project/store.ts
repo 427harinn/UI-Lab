@@ -4,6 +4,7 @@ import type { UiLabProject, Viewport } from '../../schemas/project'
 import { importMockupZip } from '../mockup/importer'
 import type { SelectedElementSnapshot } from '../visual-editing/model'
 import type { InspectorStyleSnapshot } from '../visual-editing/inspector'
+import type { EditScope } from '../visual-editing/scope'
 import { loadPersistedProject, persistProject, type ProjectStorage } from './persistence'
 import { loadProjectPackage } from './package'
 
@@ -26,14 +27,17 @@ export interface EditorStore {
   canUndo: boolean
   canRedo: boolean
   interactionMode: InteractionMode
+  editScope: EditScope
   setViewport: (viewport: Viewport) => void
   setInteractionMode: (mode: InteractionMode) => void
+  setEditScope: (scope: EditScope) => void
   setCurrentScreenId: (screenId?: string) => void
   setCurrentStateId: (stateId?: string) => void
   setSelectedElementId: (elementId?: string) => void
   setSelection: (selection?: SelectedElementSnapshot) => void
   updateSelectionFrame: (frame: SelectedElementSnapshot['frame']) => void
   updateSelectionStyles: (styles: InspectorStyleSnapshot) => void
+  updateSelectionScopeValues: (values: Record<string, string | number>) => void
   importMockupFile: (input: Blob | ArrayBuffer | Uint8Array) => Promise<boolean>
   importProjectFile: (input: Blob | ArrayBuffer | Uint8Array) => Promise<boolean>
   setImportError: (message?: string) => void
@@ -59,7 +63,7 @@ function updateHistoryFlags(past: UiLabProject[], future: UiLabProject[]) {
 }
 
 function clearSelection() {
-  return { selectedElementId: undefined, selectedComponentId: undefined, selectedElement: undefined }
+  return { selectedElementId: undefined, selectedComponentId: undefined, selectedElement: undefined, editScope: 'instance' as const }
 }
 
 function createImportedProject(imported: ImportedMockup): UiLabProject {
@@ -131,12 +135,14 @@ function createStore(storage: ProjectStorage | undefined) {
       canUndo: false,
       canRedo: false,
       interactionMode: 'select',
+      editScope: 'instance',
       setViewport: (viewport) => {
         const current = get().currentProject
         if (current.viewport.width === viewport.width && current.viewport.height === viewport.height) return
         commitProject({ ...current, viewport: { ...viewport } })
       },
-      setInteractionMode: (interactionMode) => set({ interactionMode }),
+      setInteractionMode: (interactionMode) => set({ interactionMode, editScope: 'instance' }),
+      setEditScope: (editScope) => set({ editScope }),
       setCurrentScreenId: (currentScreenId) => {
         const state = get()
         const imported = state.importedMockup
@@ -176,6 +182,9 @@ function createStore(storage: ProjectStorage | undefined) {
         const unchanged = current && Object.keys(styles).every((key) => current[key as keyof InspectorStyleSnapshot] === styles[key as keyof InspectorStyleSnapshot])
         return unchanged ? state : { selectedElement: { ...state.selectedElement, styles } }
       }),
+      updateSelectionScopeValues: (values) => set((state) => state.selectedElement
+        ? { selectedElement: { ...state.selectedElement, scopeValues: values } }
+        : state),
       importMockupFile: async (input) => {
         set({ isImporting: true, importError: undefined, status: undefined })
         try {

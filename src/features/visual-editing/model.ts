@@ -21,6 +21,9 @@ export interface SelectedElementSnapshot {
   frame: VisualFrame
   editableProperties: string[]
   styles?: InspectorStyleSnapshot
+  selectionPath?: Array<{ componentId: string; instanceId: string }>
+  scopeValues?: Record<string, string | number>
+  componentInstanceCount?: number
 }
 
 export function canDragTarget(target: Pick<EditableElementTarget, 'editableProperties'>): boolean {

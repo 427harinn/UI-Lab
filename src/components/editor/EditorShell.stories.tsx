@@ -51,6 +51,30 @@ function SelectedInspector() {
 
 export const InspectorSelected: Story = { render: () => <SelectedInspector /> }
 
+function ScopedInspectorStory({ mixed, scope = 'component' }: { mixed: boolean; scope?: 'instance' | 'component' }) {
+  useEffect(() => {
+    const project = createBlankProject()
+    project.screens = [{ id: 'home', name: 'Home', route: '/home', states: [{ id: 'normal', name: 'Normal' }] }]
+    project.editor = { currentScreenId: 'home', currentStateId: 'normal' }
+    project.components = [{ id: 'Calendar.DayCell', name: 'Calendar.DayCell', type: 'component', selector: '[data-uilab-component="Calendar.DayCell"]', instances: 'multiple', editableProperties: ['height', 'background', 'padding', 'margin', 'gap', 'fontSize'] }]
+    useEditorStore.getState().replaceProject(project)
+    useEditorStore.getState().setSelection({
+      elementId: 'day-1', componentId: 'Calendar.DayCell', frame: { x: 20, y: 20, width: 48, height: 56 },
+      editableProperties: ['height', 'background', 'padding', 'margin', 'gap', 'fontSize'], componentInstanceCount: 7,
+      selectionPath: [{ componentId: 'Calendar.Grid', instanceId: 'grid' }, { componentId: 'Calendar.DayCell', instanceId: 'day-1' }],
+      scopeValues: { height: mixed ? 'Mixed' : 56, background: '#ffffff', padding: 4, margin: 0, gap: 2, fontSize: 14 },
+      styles: { padding: 4, margin: 0, gap: 2, fontSize: 14, fontWeight: 400, lineHeight: 19.2, color: '#000000', background: '#ffffff', border: 'none', borderRadius: 4, opacity: 1 },
+    })
+    useEditorStore.getState().setEditScope(scope)
+    return () => useEditorStore.getState().setEditScope('instance')
+  }, [mixed, scope])
+  return <InspectorPanel />
+}
+
+export const InspectorInstanceScope: Story = { render: () => <ScopedInspectorStory mixed={false} scope="instance" /> }
+export const InspectorComponentScope: Story = { render: () => <ScopedInspectorStory mixed={false} /> }
+export const InspectorMixedComponentValue: Story = { render: () => <ScopedInspectorStory mixed /> }
+
 export const StatusAndToast: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: 12, padding: 32, background: '#15181e' }}>

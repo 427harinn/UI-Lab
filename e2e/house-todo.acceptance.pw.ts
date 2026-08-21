@@ -63,7 +63,10 @@ async function selectTarget(page: Page, fixture: AdapterFixture, componentId: st
   await expect(target).toBeVisible()
   await expect(target).toHaveAttribute('data-uilab-component', componentId)
   await expect(target).toHaveAttribute('data-uilab-id', instanceId)
-  await target.dispatchEvent('click')
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await target.dispatchEvent('click')
+    if (await page.getByTestId('selected-instance-id').textContent() === instanceId) break
+  }
   await expect(page.getByTestId('selection-summary')).toContainText(componentId)
   await expect(page.getByTestId('selected-instance-id')).toHaveText(instanceId)
   return target

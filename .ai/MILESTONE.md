@@ -246,3 +246,19 @@ Status: COMPLETE
 - [x] Preserve Select editing and pass native click/input/pointer behavior through in Interact.
 - [x] Add synthetic discovery/interaction E2E, HouseToDo real-fixture mode coverage, screenshots, Storybook, docs, and housekeeping.
 - [x] Run lint, typecheck, unit/integration, build, full E2E, HouseToDo acceptance, and Storybook build.
+
+---
+
+## Milestone 10 — Selection Depth, Edit Scope & Flow-aware Layout Editing
+
+Status: COMPLETE
+
+- [x] Add DOM-ancestry ordered nested Adapter selection cycling with tolerance and lifecycle resets.
+- [x] Add serializable selection breadcrumb and Interact-mode cycle boundary.
+- [x] Add transient This instance / All instances scope UI, metadata gating, default instance scope, and mixed values.
+- [x] Add one-record component-scope change semantics, current screen/state preview application, rediscovery reapply, Undo/Redo, and backward-compatible omitted-scope handling.
+- [x] Add optional Codex scope/reference fields and shared semantic implementation guidance.
+- [x] Add conservative block/flex-column/grid flow detection, margin-top spacing mapping, status feedback, and Alt/Option visual fallback.
+- [x] Add synthetic selection/scope/flow tests, real HouseToDo Calendar.DayCell scope coverage, screenshots, Storybook states, and documentation.
+- [x] Preserve Adapter v1, trusted iframe, M9 lifecycle, Project/Codex export, fixture SHA, and HouseToDo acceptance contracts.
+- [x] Run lint, typecheck, unit/integration tests, build, full E2E, HouseToDo acceptance, and Storybook build.

@@ -430,3 +430,19 @@ Status: COMPLETE
 - [x] M9-07: Run all quality gates and prepare a non-merged PR targeting `main`.
 
 Results: discovery refreshes are coalesced in one animation frame; Select suppresses native target clicks for Inspector editing; Interact preserves the current selection while allowing native preview behavior; Adapter v1, history, Project/Codex Export, synthetic regressions, and the pinned HouseToDo acceptance remain intact.
+
+---
+
+## Milestone 10 — Selection Depth, Edit Scope & Flow-aware Layout Editing
+
+Status: COMPLETE
+
+- [x] M10-01: Add `selectionCandidates.ts` with ancestry-only candidate ordering, repeated-click cycle, tolerance, and lifecycle reset behavior.
+- [x] M10-02: Add breadcrumb selection path and accessible scope controls with `This instance` default and Adapter multiple gating.
+- [x] M10-03: Extend internal changes with optional component scope/reference metadata; apply shared changes to all current and rediscovered instances without changing Adapter v1.
+- [x] M10-04: Preserve one-operation Undo/Redo, project round trip, old-change migration default, mixed values, and Codex scope output.
+- [x] M10-05: Add conservative flow-aware vertical spacing conversion with Move fallback, status feedback, and Alt/Option override.
+- [x] M10-06: Add unit/integration/E2E/Storybook/docs/screenshots and validate pinned HouseToDo `Calendar.DayCell` metadata and component-wide height editing.
+- [x] M10-07: Run all quality gates and prepare a non-merged PR targeting `main`.
+
+Results: nested Adapter target clicks cycle outer-to-deep; component scope is one semantic change constrained to screen/state; flow-safe vertical edits use exact margin-top spacing while ambiguous or positioned targets retain visual movement. The pinned HouseToDo fixture remains unchanged.

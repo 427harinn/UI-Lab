@@ -34,6 +34,10 @@ export const uiChangeSchema = z.object({
   stateId: z.string().optional(),
   elementId: z.string().min(1),
   componentId: z.string().optional(),
+  // M10: omitted scope is the v1-compatible instance scope.
+  scope: z.enum(['instance', 'component']).optional(),
+  referenceInstanceId: z.string().min(1).optional(),
+  subProperty: z.string().min(1).optional(),
   property: z.string().min(1),
   before: z.unknown().optional(),
   after: z.unknown(),

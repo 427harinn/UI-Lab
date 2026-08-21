@@ -4,7 +4,7 @@ import Moveable, { type OnDrag, type OnDragStart, type OnResize, type OnResizeSt
 import { useEditorStore } from '../../features/project/store'
 import { buildPreviewRoute, parsePreviewHash } from '../../features/mockup/route'
 import { getScreenPath, type ImportedMockup } from '../../schemas/adapter'
-import { discoverEditableElements, findEditableTargetAtNode } from '../../features/visual-editing/discovery'
+import { discoverEditableElements } from '../../features/visual-editing/discovery'
 import { EDITOR_OWNED_ATTRIBUTE, createDiscoveryScheduler, shouldRediscoverMutations } from '../../features/visual-editing/discoveryLifecycle'
 import {
   canDragTarget,
@@ -26,7 +26,10 @@ import {
   resolveVisualFrame,
   upsertChange,
 } from '../../features/visual-editing/changes'
-import { readComputedStyleSnapshot, readInlineStyleSnapshot } from '../../features/visual-editing/inspector'
+import { parseCssNumber, readComputedStyleSnapshot, readInlineStyleSnapshot } from '../../features/visual-editing/inspector'
+import { applyFlowSpacing, detectFlowDragMode, type FlowDragDecision } from '../../features/visual-editing/flowLayout'
+import { cycleSelectionCandidate, getSelectableAncestorsAtNode, orderSelectionCandidates } from '../../features/visual-editing/selectionCandidates'
+import { createFlowSpacingChange } from '../../features/visual-editing/flowLayout'
 import { captureIframeScreenshot } from '../../features/codex-export/screenshot'
 import { registerPreviewCapture, previewScopeKey, type PreviewCaptureScope } from '../../features/codex-export/previewCapture'
 import { handleEditorShortcut } from '../../features/editor/shortcuts'
@@ -36,6 +39,8 @@ interface InteractionState {
   target: EditableElementTarget
   before: VisualFrame
   current: VisualFrame
+  flow?: FlowDragDecision
+  beforeMarginTop?: number
 }
 
 function sameFrame(first: VisualFrame, second: VisualFrame): boolean {
@@ -63,6 +68,10 @@ function previewHashForScope(importedMockup: ImportedMockup, scope: PreviewCaptu
   const route = buildPreviewRoute(importedMockup.entry, getScreenPath(screen), scope.stateId)
   const hashIndex = route.indexOf('#')
   return hashIndex >= 0 ? route.slice(hashIndex) : ''
+}
+
+function sameValue(first: unknown, second: unknown): boolean {
+  return typeof first === typeof second && first === second
 }
 
 export function Preview() {
@@ -94,6 +103,10 @@ export function Preview() {
   const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null)
   const [targets, setTargets] = useState<EditableElementTarget[]>([])
   const [snapActive, setSnapActive] = useState(false)
+  const [flowStatus, setFlowStatus] = useState<string | undefined>(undefined)
+  const selectionCycleRef = useRef<{ key?: string; index: number; point?: { x: number; y: number } }>({ index: -1 })
+  const discoveryKeyRef = useRef<string | undefined>(undefined)
+  const suppressNextClickRef = useRef(false)
 
   useEffect(() => {
     interactionModeRef.current = interactionMode
@@ -172,7 +185,7 @@ export function Preview() {
       captureBaseStyles(target.element)
       const baseFrame = baseFramesRef.current.get(target.element) ?? getElementFrame(target.element)
       baseFramesRef.current.set(target.element, baseFrame)
-      const frame = resolveVisualFrame(liveProject, liveScreenId, liveStateId, target.instanceId, baseFrame)
+      const frame = resolveVisualFrame(liveProject, liveScreenId, liveStateId, target.instanceId, baseFrame, target.componentId)
       applyVisualFrame(target.element, baseFrame, frame)
       const baseStyles = baseInspectorStylesRef.current.get(target.element) ?? readComputedStyleSnapshot(target.element)
       const baseInlineStyles = baseInlineStylesRef.current.get(target.element) ?? readInlineStyleSnapshot(target.element)
@@ -186,6 +199,7 @@ export function Preview() {
         liveStateId,
         target.instanceId,
         baseStyles,
+        target.componentId,
       )
       if (liveSelection?.elementId === target.instanceId && liveSelection.componentId === target.componentId) {
         liveState.updateSelectionStyles(styles)
@@ -195,7 +209,7 @@ export function Preview() {
       const selected = nextTargets.find((target) => target.instanceId === liveSelection.elementId && target.componentId === liveSelection.componentId)
       if (selected) {
         const baseFrame = baseFramesRef.current.get(selected.element) ?? getElementFrame(selected.element)
-        liveState.updateSelectionFrame(resolveVisualFrame(liveProject, liveScreenId, liveStateId, selected.instanceId, baseFrame))
+        liveState.updateSelectionFrame(resolveVisualFrame(liveProject, liveScreenId, liveStateId, selected.instanceId, baseFrame, selected.componentId))
       }
     }
   }, [])
@@ -214,8 +228,8 @@ export function Preview() {
     liveState.setSelection({
       ...liveSelection,
       editableProperties: replacement.editableProperties,
-      frame: resolveVisualFrame(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, replacement.instanceId, baseFrame),
-      styles: resolveInspectorStyles(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, replacement.instanceId, baseStyles),
+      frame: resolveVisualFrame(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, replacement.instanceId, baseFrame, replacement.componentId),
+        styles: resolveInspectorStyles(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, replacement.instanceId, baseStyles, replacement.componentId),
     })
   }, [])
 
@@ -260,6 +274,9 @@ export function Preview() {
     baseFramesRef.current = new WeakMap()
     baseInspectorStylesRef.current = new WeakMap()
     baseInlineStylesRef.current = new WeakMap()
+    selectionCycleRef.current = { index: -1 }
+    discoveryKeyRef.current = undefined
+    setFlowStatus(undefined)
     setIframeDocument(document)
     setOverlayRoot(nextRoot)
     useEditorStore.getState().setSelection(undefined)
@@ -268,6 +285,9 @@ export function Preview() {
       if (iframeRef.current?.contentDocument !== document) return
       const liveState = useEditorStore.getState()
       const discovered = discoverEditableElements(document, liveState.currentProject.components)
+      const nextKey = discovered.map((target) => `${target.componentId}::${target.instanceId}`).join('|')
+      if (nextKey !== discoveryKeyRef.current) selectionCycleRef.current = { index: -1 }
+      discoveryKeyRef.current = nextKey
       targetsRef.current = discovered
       setTargets(discovered)
       reconcileSelection(discovered)
@@ -280,6 +300,7 @@ export function Preview() {
     })
     observer.observe(document, { childList: true, subtree: true })
     const handleHashChange = () => {
+      selectionCycleRef.current = { index: -1 }
       const parsedRoute = parsePreviewHash(window.location.hash)
       const liveState = useEditorStore.getState()
       const liveImportedMockup = liveState.importedMockup
@@ -298,8 +319,22 @@ export function Preview() {
     rediscover()
 
     const handleClick = (event: MouseEvent) => {
-      const target = findEditableTargetAtNode(event.target, targetsRef.current)
       if (interactionModeRef.current === 'interact') return
+      if (suppressNextClickRef.current) {
+        suppressNextClickRef.current = false
+        return
+      }
+      if (overlayRootRef.current?.contains(event.target as Node)) return
+      const candidates = orderSelectionCandidates(getSelectableAncestorsAtNode(event.target, targetsRef.current))
+      const result = cycleSelectionCandidate(
+        candidates,
+        selectionCycleRef.current.key,
+        selectionCycleRef.current.index,
+        { x: event.clientX, y: event.clientY },
+        selectionCycleRef.current.point,
+      )
+      selectionCycleRef.current = result
+      const target = result.target
       if (!target) {
         useEditorStore.getState().setSelection(undefined)
         return
@@ -307,16 +342,33 @@ export function Preview() {
       event.preventDefault()
       event.stopPropagation()
       const liveState = useEditorStore.getState()
+      setFlowStatus(undefined)
       const baseFrame = baseFramesRef.current.get(target.element) ?? getElementFrame(target.element)
-      const frame = resolveVisualFrame(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, target.instanceId, baseFrame)
+      const frame = resolveVisualFrame(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, target.instanceId, baseFrame, target.componentId)
       const baseStyles = baseInspectorStylesRef.current.get(target.element) ?? readComputedStyleSnapshot(target.element)
+      const candidatePath = candidates.map((candidate) => ({ componentId: candidate.componentId, instanceId: candidate.instanceId }))
+      const componentTargets = targetsRef.current.filter((candidate) => candidate.componentId === target.componentId)
+      const scopeValues: Record<string, string | number> = {}
+      for (const property of target.editableProperties) {
+        const values = componentTargets.map((candidate) => {
+          const candidateBaseFrame = baseFramesRef.current.get(candidate.element) ?? getElementFrame(candidate.element)
+          if (property === 'width' || property === 'height') return resolveVisualFrame(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, candidate.instanceId, candidateBaseFrame, candidate.componentId)[property]
+          const candidateBaseStyles = baseInspectorStylesRef.current.get(candidate.element) ?? readComputedStyleSnapshot(candidate.element)
+          return resolveInspectorStyles(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, candidate.instanceId, candidateBaseStyles, candidate.componentId)[property as keyof ReturnType<typeof readComputedStyleSnapshot>]
+        })
+        if (values.length > 0) scopeValues[property] = values.every((value) => sameValue(value, values[0])) ? values[0] as string | number : 'Mixed'
+      }
       liveState.setSelection({
         elementId: target.instanceId,
         componentId: target.componentId,
         frame,
         editableProperties: target.editableProperties,
-        styles: resolveInspectorStyles(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, target.instanceId, baseStyles),
+        styles: resolveInspectorStyles(liveState.currentProject, liveState.currentScreenId ?? '', liveState.currentStateId, target.instanceId, baseStyles, target.componentId),
+        selectionPath: candidatePath,
+        scopeValues,
+        componentInstanceCount: componentTargets.length,
       })
+      liveState.setEditScope('instance')
     }
     document.addEventListener('click', handleClick, true)
     iframeClickCleanupRef.current = () => document.removeEventListener('click', handleClick, true)
@@ -336,7 +388,14 @@ export function Preview() {
     if (!interaction) return
     interaction.current = frame
     const baseFrame = baseFramesRef.current.get(interaction.target.element) ?? interaction.before
-    applyVisualFrame(interaction.target.element, baseFrame, frame)
+    if (interaction.type === 'drag' && interaction.flow?.mode === 'spacing' && interaction.beforeMarginTop !== undefined) {
+      const nextMarginTop = interaction.beforeMarginTop + (frame.y - interaction.before.y)
+      applyFlowSpacing(interaction.target.element, nextMarginTop)
+      setFlowStatus(`Spacing · margin-top ${nextMarginTop >= interaction.beforeMarginTop ? '+' : ''}${Math.round(nextMarginTop - interaction.beforeMarginTop)}px`)
+    } else {
+      applyVisualFrame(interaction.target.element, baseFrame, frame)
+      if (interaction.type === 'drag') setFlowStatus('Move · visual position')
+    }
     moveableRef.current?.updateRect()
     updateSelectionFrame(frame)
   }, [updateSelectionFrame])
@@ -352,7 +411,17 @@ export function Preview() {
     if (!interaction || !activeScreenId || sameFrame(interaction.before, interaction.current)) return
 
     let nextChanges = [...activeProject.changes]
-    if (interaction.type === 'drag') {
+    if (interaction.type === 'drag' && interaction.flow?.mode === 'spacing' && interaction.beforeMarginTop !== undefined) {
+      const afterMarginTop = interaction.beforeMarginTop + (interaction.current.y - interaction.before.y)
+      nextChanges = upsertChange(nextChanges, createFlowSpacingChange(
+        activeScreenId,
+        activeStateId,
+        interaction.target,
+        interaction.beforeMarginTop,
+        afterMarginTop,
+        liveState.editScope,
+      ))
+    } else if (interaction.type === 'drag') {
       nextChanges = upsertChange(nextChanges, createPositionChange(
         activeScreenId,
         activeStateId,
@@ -360,6 +429,8 @@ export function Preview() {
         interaction.target.componentId,
         interaction.before,
         interaction.current,
+        undefined,
+        { scope: liveState.editScope, referenceInstanceId: interaction.target.instanceId },
       ))
     } else {
       if (canDragTarget(interaction.target)
@@ -371,6 +442,8 @@ export function Preview() {
           interaction.target.componentId,
           interaction.before,
           interaction.current,
+          undefined,
+          { scope: liveState.editScope, referenceInstanceId: interaction.target.instanceId },
         ))
       }
       if (canResizeWidth(interaction.target) && interaction.before.width !== interaction.current.width) {
@@ -382,6 +455,8 @@ export function Preview() {
           'width',
           interaction.before.width,
           interaction.current.width,
+          undefined,
+          { scope: liveState.editScope, referenceInstanceId: interaction.target.instanceId },
         ))
       }
       if (canResizeHeight(interaction.target) && interaction.before.height !== interaction.current.height) {
@@ -393,11 +468,61 @@ export function Preview() {
           'height',
           interaction.before.height,
           interaction.current.height,
+          undefined,
+          { scope: liveState.editScope, referenceInstanceId: interaction.target.instanceId },
         ))
       }
     }
     commitProject({ ...activeProject, changes: nextChanges })
+    window.setTimeout(() => { suppressNextClickRef.current = false }, 0)
   }, [commitProject])
+
+  // Static flow targets use this narrow iframe-local fallback when Moveable cannot start a native drag.
+  useEffect(() => {
+    if (interactionMode !== 'select' || !iframeDocument || !selectedTarget || !canDragTarget(selectedTarget)) return
+    const decision = detectFlowDragMode(selectedTarget)
+    if (decision.mode !== 'spacing') return
+    const element = selectedTarget.element
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.button !== 0 || interactionRef.current) return
+      const rect = element.getBoundingClientRect()
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return
+      event.preventDefault()
+      event.stopPropagation()
+      const before = selectedElement?.frame ?? getElementFrame(element)
+      const computed = element.ownerDocument.defaultView?.getComputedStyle(element)
+      interactionRef.current = {
+        type: 'drag', target: selectedTarget, before, current: before, flow: decision,
+        beforeMarginTop: computed ? parseCssNumber(computed.marginTop, 0) : 0,
+      }
+      suppressNextClickRef.current = true
+      setFlowStatus('Spacing · margin-top +0px')
+      const startX = event.clientX
+      const startY = event.clientY
+      const handlePointerMove = (move: PointerEvent) => {
+        const interaction = interactionRef.current
+        if (!interaction || interaction.type !== 'drag') return
+        const deltaX = move.clientX - startX
+        const deltaY = move.clientY - startY
+        if (Math.abs(deltaX) > Math.abs(deltaY)) interaction.flow = { mode: 'move', reason: 'horizontal drag' }
+        updateInteractionFrame(frameFromDrag(before, [deltaX, deltaY]))
+      }
+      const cleanup = () => {
+        iframeDocument.removeEventListener('pointermove', handlePointerMove, true)
+        iframeDocument.removeEventListener('pointerup', handlePointerUp, true)
+        iframeDocument.removeEventListener('pointercancel', cleanup, true)
+      }
+      const handlePointerUp = () => {
+        cleanup()
+        commitInteraction()
+      }
+      iframeDocument.addEventListener('pointermove', handlePointerMove, true)
+      iframeDocument.addEventListener('pointerup', handlePointerUp, true)
+      iframeDocument.addEventListener('pointercancel', cleanup, true)
+    }
+    iframeDocument.addEventListener('pointerdown', handlePointerDown, true)
+    return () => iframeDocument.removeEventListener('pointerdown', handlePointerDown, true)
+  }, [commitInteraction, iframeDocument, interactionMode, selectedElement, selectedTarget, updateInteractionFrame])
 
   const handleManualResizeStart = useCallback((event: PointerEvent, direction: string, handle: HTMLElement) => {
     if (interactionMode !== 'select') return
@@ -483,6 +608,7 @@ export function Preview() {
 
   useEffect(() => {
     cancelActiveInteraction()
+    selectionCycleRef.current = { index: -1 }
     const resetSnapTimer = window.setTimeout(() => setSnapActive(false), 0)
     return () => {
       window.clearTimeout(resetSnapTimer)
@@ -523,13 +649,21 @@ export function Preview() {
     if (interactionMode !== 'select') return
     if (!selectedTarget || !canDragTarget(selectedTarget)) return
     const before = selectedElement?.frame ?? getElementFrame(selectedTarget.element)
+    const sourceEvent = event.inputEvent as (MouseEvent | PointerEvent | undefined)
+    const flow = detectFlowDragMode(selectedTarget, Boolean(sourceEvent?.altKey))
+    const computed = selectedTarget.element.ownerDocument.defaultView?.getComputedStyle(selectedTarget.element)
     event.set([0, 0])
-    interactionRef.current = { type: 'drag', target: selectedTarget, before, current: before }
+    interactionRef.current = { type: 'drag', target: selectedTarget, before, current: before, flow, beforeMarginTop: computed ? parseCssNumber(computed.marginTop, 0) : undefined }
+    suppressNextClickRef.current = true
+    setFlowStatus(flow.mode === 'spacing' ? 'Spacing · margin-top +0px' : 'Move · visual position')
   }, [interactionMode, selectedElement, selectedTarget])
 
   const handleDrag = useCallback((event: OnDrag) => {
     const interaction = interactionRef.current
     if (!interaction || interaction.type !== 'drag') return
+    if (interaction.flow?.mode === 'spacing' && Math.abs(event.beforeTranslate[0] ?? 0) > Math.abs(event.beforeTranslate[1] ?? 0)) {
+      interaction.flow = { mode: 'move', reason: 'horizontal drag' }
+    }
     updateInteractionFrame(frameFromDrag(interaction.before, event.beforeTranslate))
   }, [updateInteractionFrame])
 
@@ -540,6 +674,7 @@ export function Preview() {
     event.set([before.width, before.height])
     if (event.dragStart) event.dragStart.set([0, 0])
     interactionRef.current = { type: 'resize', target: selectedTarget, before, current: before }
+    suppressNextClickRef.current = true
   }, [interactionMode, selectedElement, selectedTarget])
 
   const handleResize = useCallback((event: OnResize) => {
@@ -663,7 +798,7 @@ export function Preview() {
       </div>
       <footer className="preview-panel__footer">
         <span>{viewport.width} × {viewport.height}px</span>
-        {selectedTarget && interactionMode === 'select' && <span className="preview-panel__editing-status">Guides enabled{snapActive ? ' · Snap active' : ''}</span>}
+        {selectedTarget && interactionMode === 'select' && <span className="preview-panel__editing-status">{flowStatus ? `${flowStatus}${snapActive ? ' · Snap active' : ''}` : `Guides enabled${snapActive ? ' · Snap active' : ''}`}</span>}
       </footer>
     </section>
   )

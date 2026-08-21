@@ -8,6 +8,7 @@ import {
   mergeInspectorStyles,
 } from './inspector'
 import type { VisualFrame } from './model'
+import { changeAppliesToTarget, scopedChangeKey } from './scope'
 
 function isNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
@@ -22,19 +23,18 @@ function readPosition(value: unknown): Partial<Pick<VisualFrame, 'x' | 'y'>> {
   }
 }
 
-function changesForElement(project: UiLabProject, screenId: string, stateId: string | undefined, elementId: string): UiChange[] {
+function changesForElement(project: UiLabProject, screenId: string, stateId: string | undefined, elementId: string, componentId?: string): UiChange[] {
   return project.changes.filter((change) => (
-    change.screenId === screenId
-    && change.elementId === elementId
-    && (change.stateId === undefined || change.stateId === stateId)
+    componentId
+      ? changeAppliesToTarget(change, screenId, stateId, { componentId, instanceId: elementId })
+      : change.screenId === screenId
+        && change.elementId === elementId
+        && (change.stateId === undefined || change.stateId === stateId)
   ))
 }
 
 function sameScope(change: UiChange, next: UiChange): boolean {
-  return change.screenId === next.screenId
-    && change.stateId === next.stateId
-    && change.elementId === next.elementId
-    && change.property === next.property
+  return scopedChangeKey(change) === scopedChangeKey(next)
 }
 
 export function upsertChange(changes: UiChange[], nextChange: UiChange): UiChange[] {
@@ -49,8 +49,9 @@ export function resolveVisualFrame(
   stateId: string | undefined,
   elementId: string,
   baseFrame: VisualFrame,
+  componentId?: string,
 ): VisualFrame {
-  return changesForElement(project, screenId, stateId, elementId).reduce((frame, change) => {
+  return changesForElement(project, screenId, stateId, elementId, componentId).reduce((frame, change) => {
     if (change.property === 'position') return { ...frame, ...readPosition(change.after) }
     if (change.property === 'width' && isNumber(change.after)) return { ...frame, width: Math.max(1, change.after) }
     if (change.property === 'height' && isNumber(change.after)) return { ...frame, height: Math.max(1, change.after) }
@@ -66,6 +67,7 @@ export function createPositionChange(
   before: VisualFrame,
   after: VisualFrame,
   now = new Date().toISOString(),
+  options?: { scope?: 'instance' | 'component'; referenceInstanceId?: string },
 ): UiChange {
   return {
     id: crypto.randomUUID(),
@@ -73,6 +75,7 @@ export function createPositionChange(
     stateId,
     elementId,
     componentId,
+    ...(options?.scope === 'component' ? { scope: 'component' as const, referenceInstanceId: options.referenceInstanceId ?? elementId } : {}),
     property: 'position',
     before: { x: before.x, y: before.y },
     after: { x: after.x, y: after.y },
@@ -90,6 +93,7 @@ export function createDimensionChange(
   before: number,
   after: number,
   now = new Date().toISOString(),
+  options?: { scope?: 'instance' | 'component'; referenceInstanceId?: string },
 ): UiChange {
   return {
     id: crypto.randomUUID(),
@@ -97,6 +101,7 @@ export function createDimensionChange(
     stateId,
     elementId,
     componentId,
+    ...(options?.scope === 'component' ? { scope: 'component' as const, referenceInstanceId: options.referenceInstanceId ?? elementId } : {}),
     property,
     before,
     after,
@@ -114,6 +119,7 @@ export function createStyleChange(
   before: number | string,
   after: number | string,
   now = new Date().toISOString(),
+  options?: { scope?: 'instance' | 'component'; referenceInstanceId?: string; subProperty?: string },
 ): UiChange {
   return {
     id: crypto.randomUUID(),
@@ -121,6 +127,8 @@ export function createStyleChange(
     stateId,
     elementId,
     componentId,
+    ...(options?.scope === 'component' ? { scope: 'component' as const, referenceInstanceId: options.referenceInstanceId ?? elementId } : {}),
+    ...(options?.subProperty ? { subProperty: options.subProperty } : {}),
     property,
     before,
     after: property === 'opacity' && typeof after === 'number' ? clampOpacity(after) : after,
@@ -135,18 +143,19 @@ export function resolveInspectorStyles(
   stateId: string | undefined,
   elementId: string,
   baseStyles: InspectorStyleSnapshot,
+  componentId?: string,
 ): InspectorStyleSnapshot {
-  return changesForElement(project, screenId, stateId, elementId)
+  return changesForElement(project, screenId, stateId, elementId, componentId)
     .filter((change) => inspectorStyleProperties.includes(change.property as InspectorStyleProperty))
     .reduce((styles, change) => mergeInspectorStyles(styles, change.property as InspectorStyleProperty, change.after), { ...baseStyles })
 }
 
-function styleChangeExists(project: UiLabProject, screenId: string, stateId: string | undefined, elementId: string, property: InspectorStyleProperty): boolean {
-  return project.changes.some((change) => (
-    change.screenId === screenId
-    && change.elementId === elementId
-    && change.property === property
-    && (change.stateId === undefined || change.stateId === stateId)
+function styleChangeExists(project: UiLabProject, screenId: string, stateId: string | undefined, elementId: string, property: InspectorStyleProperty, componentId?: string): UiChange | undefined {
+  return project.changes.find((change) => (
+    change.property === property
+      && (componentId
+        ? changeAppliesToTarget(change, screenId, stateId, { componentId, instanceId: elementId })
+        : change.screenId === screenId && change.elementId === elementId && (change.stateId === undefined || change.stateId === stateId))
   ))
 }
 
@@ -158,21 +167,25 @@ export function applyInspectorStyleOverrides(
   stateId: string | undefined,
   elementId: string,
   baseStyles: InspectorStyleSnapshot,
+  componentId?: string,
 ): InspectorStyleSnapshot {
-  const styles = resolveInspectorStyles(project, screenId, stateId, elementId, baseStyles)
+  const styles = resolveInspectorStyles(project, screenId, stateId, elementId, baseStyles, componentId)
   for (const property of inspectorStyleProperties) {
     const cssName = cssPropertyName(property)
-    if (styleChangeExists(project, screenId, stateId, elementId, property)) {
+    const change = styleChangeExists(project, screenId, stateId, elementId, property, componentId)
+    if (change) {
       const value = styles[property]
       const isUnitless = property === 'fontWeight' || property === 'opacity'
       const cssValue = property === 'opacity'
         ? String(clampOpacity(Number(value)))
         : typeof value === 'number' && !isUnitless ? `${value}px` : String(value)
-      element.style.setProperty(cssName, cssValue)
+      element.style.setProperty(change.subProperty ?? cssName, cssValue)
     } else if (baseInlineStyles[property]) {
       element.style.setProperty(cssName, baseInlineStyles[property] ?? '')
+      if (property === 'margin') element.style.removeProperty('margin-top')
     } else {
       element.style.removeProperty(cssName)
+      if (property === 'margin') element.style.removeProperty('margin-top')
     }
   }
   return styles

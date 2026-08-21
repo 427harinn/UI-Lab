@@ -58,6 +58,13 @@ button:disabled { color: #636b78; border-color: #292e38; background: #1d2026; }
 .selection-summary__identity strong { color: #eef1f5; font-size: 14px; overflow-wrap: anywhere; }
 .selection-summary__identity span:last-child { color: #8c98aa; font-size: 11px; overflow-wrap: anywhere; }
 .selection-summary__label { color: #7f8a9b; font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.selection-breadcrumb { display: flex; flex-wrap: wrap; gap: 2px; color: #8db7ff; font-size: 11px; line-height: 1.45; }
+.selection-breadcrumb__current { color: #eef1f5; font-weight: 650; }
+.edit-scope { display: grid; gap: 7px; margin: 0; padding: 10px; border: 1px solid #303744; border-radius: 7px; background: #20242c; color: #cbd3df; font-size: 11px; }
+.edit-scope legend { padding: 0 4px; color: #7f8a9b; font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.edit-scope label { display: flex; align-items: center; gap: 7px; }
+.edit-scope input { accent-color: #7d9cff; }
+.edit-scope__disabled { color: #626d7d; }
 .measurement-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
 .measurement-grid div { padding: 10px; border: 1px solid #303744; border-radius: 7px; background: #20242c; }
 .measurement-grid dt { color: #7f8a9b; font-size: 10px; font-weight: 750; }

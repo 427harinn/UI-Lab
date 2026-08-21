@@ -52,6 +52,24 @@ to achieve the same result. `target` is a future-compatible approximate goal.
 `componentId` is the primary semantic implementation target. `instanceId` is a
 visual reference; an instance-specific override requires an explicit reason.
 
+M10 component-wide records may additionally include:
+
+```json
+{
+  "scope": "component",
+  "referenceInstanceId": "day-1",
+  "componentId": "Calendar.DayCell",
+  "property": "height",
+  "before": 56,
+  "after": 68,
+  "valueType": "visual"
+}
+```
+
+`scope` omitted means `instance` for v1 compatibility. A component-scoped
+record is shared semantic implementation intent for the specified screen/state;
+consumers should not materialize it as unrelated one-off instance overrides.
+
 ## Other files
 
 - `design-tokens.json` preserves the Adapter's semantic token object and does not include editor transient values.
